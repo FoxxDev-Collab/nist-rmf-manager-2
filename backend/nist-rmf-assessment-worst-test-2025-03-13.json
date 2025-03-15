@@ -1,0 +1,412 @@
+{
+  "assessment": {
+    "id": "1741903107101",
+    "name": "Worst-Test",
+    "organization": "Bad Organization",
+    "assessor": "Bullfrogprice",
+    "scope": "The worst",
+    "date": "2025-03-13",
+    "status": "Completed",
+    "completion": 99,
+    "score": 44,
+    "controls": {
+      "AC": {
+        "AC-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "AC-2": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "AC-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "AC-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "AT": {
+        "AT-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "AT-2": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "AT-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "AT-4": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "AU": {
+        "AU-1": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "AU-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "AU-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "AU-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "CA": {
+        "CA-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CA-2": {
+          "status": "Not Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CA-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "CA-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "CM": {
+        "CM-1": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CM-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CM-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "CM-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "CP": {
+        "CP-1": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CP-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "CP-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "CP-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "IA": {
+        "IA-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "IA-2": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "IA-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "IA-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "IR": {
+        "IR-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "IR-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "IR-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "IR-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "MA": {
+        "MA-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "MA-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "MA-3": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "MA-4": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "MP": {
+        "MP-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "MP-2": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "MP-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "MP-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "PA": {
+        "PA-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PA-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PA-3": {
+          "status": "Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PA-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "PL": {
+        "PL-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "PL-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PL-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PL-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "PM": {
+        "PM-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "PM-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PM-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PM-4": {
+          "status": "Not Applicable",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "PS": {
+        "PS-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "PS-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PS-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "PS-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "RA": {
+        "RA-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "RA-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "RA-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "RA-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "SA": {
+        "SA-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "SA-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "SA-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "SA-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "SC": {
+        "SC-1": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "SC-2": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "SC-3": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "SC-4": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        }
+      },
+      "SI": {
+        "SI-1": {
+          "status": "Partially Implemented",
+          "notes": "",
+          "score": 0
+        },
+        "SI-2": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "SI-3": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        },
+        "SI-4": {
+          "status": "Planned",
+          "notes": "",
+          "score": 0
+        }
+      }
+    },
+    "completionDate": "2025-03-13"
+  }
+}
