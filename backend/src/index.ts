@@ -12,6 +12,8 @@ dotenv.config()
 // Types
 interface Assessment {
   id?: string
+  title?: string;
+  description?: string;
   client_name: string;        // For backward compatibility
   organization_name?: string;  // New field name
   assessor_name?: string;
@@ -136,10 +138,19 @@ const app = new Elysia()
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    // Extract controls data directly from the request body or from the original_data
-    let controlsData = assessment.controls || 
-                        assessment.original_data?.controls || 
-                        assessment.data?.controls;
+    // Extract controls data directly from the request body
+    // First try to get from standard locations
+    let controlsData = assessment.data?.controls;
+    
+    // If not found, try alternative locations
+    if (!controlsData || Object.keys(controlsData).length === 0) {
+      controlsData = assessment.controls || 
+                    assessment.original_data?.controls;
+      
+      if (controlsData) {
+        console.log('Found controls data in alternative location:', Object.keys(controlsData).length);
+      }
+    }
     
     // Add some default controls data for testing if none exists
     if (!controlsData || Object.keys(controlsData).length === 0) {
@@ -157,18 +168,28 @@ const app = new Elysia()
       console.log('Found controls data with keys:', Object.keys(controlsData));
     }
     
+    // Extract other assessment fields with fallbacks to ensure we have valid data
+    const title = assessment.title || assessment.data?.organization || assessment.organization_name || assessment.client_name || 'Untitled Assessment';
+    const description = assessment.description || `Assessment by ${assessment.data?.assessor || assessment.assessor_name || 'Unknown'} on ${assessment.data?.date || assessment.assessment_date || now}`;
+    const organization = assessment.data?.organization || assessment.organization_name || assessment.client_name || '';
+    const assessor = assessment.data?.assessor || assessment.assessor_name || 'Unknown';
+    const date = assessment.data?.date || assessment.assessment_date || now;
+    const status = assessment.data?.status || assessment.status || 'In Progress';
+    const score = assessment.data?.score || assessment.overall_score || assessment.score || 0;
+    const completion = assessment.data?.completion || assessment.completion || 0;
+    
     // Convert assessment from API schema to database schema
     const assessmentData = {
       id,
-      title: assessment.organization_name || assessment.client_name,
-      description: `Assessment by ${assessment.assessor_name || 'Unknown'} on ${assessment.assessment_date || now}`,
+      title,
+      description,
       data: {
-        organization: assessment.organization_name || assessment.client_name,
-        assessor: assessment.assessor_name || 'Unknown',
-        date: assessment.assessment_date || now,
-        status: assessment.status || 'In Progress',
-        score: assessment.overall_score || assessment.score,
-        completion: assessment.completion || 0,
+        organization,
+        assessor,
+        date,
+        status,
+        score,
+        completion,
         controls: controlsData
       },
       created_at: assessment.created_at || now,
@@ -177,7 +198,13 @@ const app = new Elysia()
     
     console.log('Importing assessment with controls:', typeof controlsData, Array.isArray(controlsData) ? 'array' : 'object', Object.keys(controlsData).length);
     
-    return assessmentService.create(assessmentData)
+    try {
+      const result = assessmentService.create(assessmentData);
+      return result;
+    } catch (error) {
+      console.error('Error creating assessment:', error);
+      throw error;
+    }
   })
   .delete('/api/assessments/:id', async ({ params, headers, auth }) => {
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import apiService, { Assessment } from '@/services/api';
@@ -15,7 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
-export default function CreateRiskPage() {
+// Create a separate client component for handling search params
+function RiskFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedAssessmentId = searchParams.get('assessmentId');
@@ -323,5 +324,21 @@ export default function CreateRiskPage() {
         </form>
       )}
     </div>
+  );
+}
+
+// Main component with Suspense boundary
+export default function CreateRiskPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    }>
+      <RiskFormContent />
+    </Suspense>
   );
 } 

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // src/pages/Dashboard.tsx
 'use client'
 
@@ -87,48 +88,69 @@ export default function Dashboard() {
         }
       }
 
+      if (Object.keys(controls).length === 0) {
+        console.warn('No controls found in assessment file')
+      }
+
       const now = new Date().toISOString()
 
       // Create assessment with the exact structure expected by the backend
       const assessmentData = {
-        // These fields are used by the backend to construct the assessment
-        organization_name: assessment.organization_name || assessment.client_name || assessment.title || assessment.name,
-        client_name: assessment.client_name || assessment.organization_name || assessment.title || assessment.name,
-        assessor_name: assessment.assessor_name || assessment.assessor || '',
-        assessment_date: assessment.assessment_date || assessment.date || now,
-        status: assessment.status || 'In Progress',
-        overall_score: assessment.overall_score || assessment.score || 0,
-        score: assessment.score || assessment.overall_score || 0,
-        completion: assessment.completion || 0,
-        created_at: assessment.created_at || now,
-        updated_at: now,
+        // Core Assessment properties
+        title: assessment.title || assessment.name || `${assessment.organization_name || assessment.client_name || 'Unknown'} Assessment`,
+        description: assessment.description || '',
         
-        // Include controls directly with extensive fallbacks
-        controls: controls,
-        
-        // Include the controls in the data structure as well to ensure it's not lost
+        // AssessmentData properties
         data: {
-          controls: controls,
-          // Other data properties
-          organization: assessment.organization_name || assessment.client_name || assessment.title || assessment.name,
+          organization: assessment.organization_name || assessment.client_name || assessment.organization || '',
           assessor: assessment.assessor_name || assessment.assessor || '',
           date: assessment.assessment_date || assessment.date || now,
-          status: assessment.status || 'In Progress'
+          status: assessment.status || 'In Progress',
+          controls: controls,
+          score: assessment.score || assessment.overall_score || 0,
+          completion: assessment.completion || 0
         },
         
-        // Ensure we don't lose any other data from the original assessment
-        original_data: assessment
+        created_at: assessment.created_at || now,
+        updated_at: now
       }
       
       console.log('Sending assessment with controls data:', Object.keys(controls).length)
       
-      await assessments.create(assessmentData)
-
-      toast.success('Assessment imported successfully')
-      fetchAssessments()
-      fileInput.value = ''
-    } catch (error) {
-      toast.error('Failed to import assessment')
+      try {
+        await assessments.create(assessmentData)
+        toast.success('Assessment imported successfully')
+        fetchAssessments()
+        fileInput.value = ''
+      } catch (error: any) {
+        console.error('Import error details:', error)
+        let errorMessage = 'Failed to import assessment'
+        
+        if (error.response) {
+          // The request was made and the server responded with a status code
+          // that falls out of the range of 2xx
+          errorMessage = `Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`
+          console.error('Response data:', error.response.data)
+        } else if (error.request) {
+          // The request was made but no response was received
+          errorMessage = 'No response from server. Please check if the backend is running.'
+        } else {
+          // Something happened in setting up the request that triggered an Error
+          errorMessage = `Error: ${error.message || 'Unknown error'}`
+        }
+        
+        toast.error(errorMessage)
+      }
+    } catch (error: any) {
+      let errorMessage = 'Failed to process assessment file'
+      
+      if (error instanceof SyntaxError) {
+        errorMessage = 'Invalid JSON file format'
+      } else if (error.message) {
+        errorMessage = `Error: ${error.message}`
+      }
+      
+      toast.error(errorMessage)
       console.error(error)
     } finally {
       setImporting(false)
@@ -193,7 +215,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold dark:text-white">
-              {assessmentsList.filter((a: Assessment) => ((a.data as any).overall_score || 0) < 50).length}
+              {assessmentsList.filter((a: Assessment) => (a.data.score || 0) < 50).length}
             </p>
           </CardContent>
         </Card>
