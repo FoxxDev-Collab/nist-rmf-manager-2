@@ -164,7 +164,7 @@ export default function CreateObjectivePage() {
       }
 
       // Create the objective
-      const createdObjective = await apiService.objectives.create({
+      await apiService.objectives.create({
         title: title,
         description: description,
         data: objectiveData

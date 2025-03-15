@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import apiService, { SecurityObjective, SecurityObjectiveData, Risk } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,6 +59,7 @@ interface EnhancedSecurityObjectiveData extends SecurityObjectiveData {
 
 export default function ObjectivesPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const assessmentId = params.assessmentid as string;
   const [objectives, setObjectives] = useState<SecurityObjective[]>([]);
   const [riskQueue, setRiskQueue] = useState<Risk[]>([]);
@@ -66,7 +67,25 @@ export default function ObjectivesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const router = useRouter();
+
+  // Check for success message in URL
+  useEffect(() => {
+    const success = searchParams.get('success');
+    const message = searchParams.get('message');
+    
+    if (success === 'true' && message) {
+      setSuccessMessage(decodeURIComponent(message));
+      
+      // Clear the success message after 5 seconds
+      const timer = setTimeout(() => {
+        setSuccessMessage(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
 
   // Fetch security objectives and risk queue
   useEffect(() => {
@@ -212,6 +231,13 @@ export default function ObjectivesPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {successMessage && (
+        <Alert className="bg-green-50 text-green-800 border border-green-200">
+          <CheckCircle2 className="h-4 w-4 text-green-500" />
+          <AlertDescription>{successMessage}</AlertDescription>
         </Alert>
       )}
 
