@@ -22,6 +22,7 @@ interface Control {
 interface ControlsListProps {
   controls: Record<string, Record<string, ControlStatus>>;
   onPromoteToRisk: (control: Control) => void;
+  promotedControls: Set<string>;
 }
 
 // Function to get status colors for badge variants
@@ -43,7 +44,7 @@ const getStatusIcon = (status: string) => {
   return null;
 };
 
-export function ControlsList({ controls, onPromoteToRisk }: ControlsListProps) {
+export function ControlsList({ controls, onPromoteToRisk, promotedControls }: ControlsListProps) {
   const [activeTab, setActiveTab] = useState('all');
   const [expandedControls, setExpandedControls] = useState<Record<string, boolean>>({});
   const [showBaselineExplanation, setShowBaselineExplanation] = useState(false);
@@ -200,6 +201,7 @@ export function ControlsList({ controls, onPromoteToRisk }: ControlsListProps) {
                     const controlFullId = controlKey;
                     const controlDetails = getControlDetails(family, controlFullId);
                     const isExpanded = expandedControls[`${family}-${controlFullId}`] || false;
+                    const isPromoted = promotedControls.has(`${family}-${controlFullId}`);
                     
                     return (
                       <Card key={controlKey} className={getBorderClass(controlStatus.status)}>
@@ -214,6 +216,11 @@ export function ControlsList({ controls, onPromoteToRisk }: ControlsListProps) {
                                       <span className="text-sm font-normal text-muted-foreground">
                                         {controlDetails.title}
                                       </span>
+                                    )}
+                                    {isPromoted && (
+                                      <Badge variant="secondary" className="ml-2">
+                                        Promoted to Risk
+                                      </Badge>
                                     )}
                                   </h4>
                                   <p className="text-sm flex items-center gap-1 mt-1">
@@ -340,12 +347,17 @@ export function ControlsList({ controls, onPromoteToRisk }: ControlsListProps) {
                                         family,
                                         status: controlStatus
                                       })}
+                                      disabled={isPromoted}
                                     >
-                                      Promote to Risk
+                                      {isPromoted ? 'Promoted' : 'Promote to Risk'}
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent>
-                                    <p>Create a risk based on this control&apos;s implementation status</p>
+                                    <p>
+                                      {isPromoted 
+                                        ? 'This control has already been promoted to a risk'
+                                        : 'Create a risk based on this control\'s implementation status'}
+                                    </p>
                                   </TooltipContent>
                                 </Tooltip>
                               </TooltipProvider>

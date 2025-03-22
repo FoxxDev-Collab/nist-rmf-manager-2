@@ -14,7 +14,6 @@ import {
   AssessmentOverview,
   FamilyScoresAccordion,
   ControlsList,
-  PromoteRiskModal,
   DebugInfo
 } from '@/components/shared/assessment'
 
@@ -57,9 +56,7 @@ export default function AssessmentDetail({ id }: { id: string }) {
   const router = useRouter()
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [loading, setLoading] = useState(true)
-  const [showPromoteModal, setShowPromoteModal] = useState(false)
-  const [selectedControl, setSelectedControl] = useState<Control | null>(null)
-  const [promoting, setPromoting] = useState(false)
+  const [promotedControls, setPromotedControls] = useState<Set<string>>(new Set())
 
   const loadAssessment = useCallback(async () => {
     try {
@@ -68,6 +65,11 @@ export default function AssessmentDetail({ id }: { id: string }) {
       const data = await assessments.getById(id);
       console.log('Assessment data received:', data);
       setAssessment(data)
+      
+      // Initialize promoted controls from the assessment data
+      if (data.data?.promotedControls) {
+        setPromotedControls(new Set(data.data.promotedControls))
+      }
     } catch (error) {
       toast.error('Failed to load assessment details')
       console.error('Error loading assessment:', error)
@@ -82,40 +84,36 @@ export default function AssessmentDetail({ id }: { id: string }) {
     }
   }, [id, loadAssessment])
 
-  const handlePromoteClick = (control: Control) => {
-    setSelectedControl(control)
-    setShowPromoteModal(true)
-  }
-
-  const handlePromoteSubmit = async (formData: {
-    title: string;
-    description: string;
-    impact: number;
-    likelihood: number;
-  }) => {
-    if (!selectedControl || !assessment) return
+  const handlePromoteToRisk = async (control: Control) => {
+    if (!assessment) return
     
     try {
-      setPromoting(true)
+      const controlId = `${control.family}-${control.id}`
       
+      // Create the risk
       await risks.promoteFromAssessment(assessment.id!, {
-        title: formData.title,
-        description: formData.description,
+        title: `Risk from ${control.family}-${control.id}`,
+        description: `Risk identified from control assessment with status: ${control.status.status}`,
         data: {
-          impact: formData.impact,
-          likelihood: formData.likelihood,
-          risk_score: formData.impact * formData.likelihood,
-          notes: `Promoted from control ${selectedControl.family}-${selectedControl.id} with status: ${selectedControl.status.status}`
+          impact: 3, // Default medium impact
+          likelihood: 3, // Default medium likelihood
+          risk_score: 9, // Default score (3 * 3)
+          notes: `Promoted from control ${control.family}-${control.id} with status: ${control.status.status}`,
+          control_id: controlId, // Store the control ID in the risk data
+          status: 'New'
         }
       })
       
+      // Update local state
+      setPromotedControls(prev => new Set([...prev, controlId]))
       toast.success('Risk created successfully')
-      setShowPromoteModal(false)
     } catch (error) {
-      toast.error('Failed to create risk')
-      console.error(error)
-    } finally {
-      setPromoting(false)
+      if (error instanceof Error && error.message.includes('already been promoted')) {
+        toast.error('This control has already been promoted to a risk')
+      } else {
+        toast.error('Failed to create risk')
+        console.error(error)
+      }
     }
   }
 
@@ -351,7 +349,8 @@ export default function AssessmentDetail({ id }: { id: string }) {
       {/* Controls List */}
       <ControlsList
         controls={processedData.controls}
-        onPromoteToRisk={handlePromoteClick}
+        onPromoteToRisk={handlePromoteToRisk}
+        promotedControls={promotedControls}
       />
 
       {/* Debug Info */}
@@ -360,15 +359,6 @@ export default function AssessmentDetail({ id }: { id: string }) {
         title={assessment.title}
         description={assessment.description}
         data={assessment as unknown as Record<string, unknown>}
-      />
-
-      {/* Promote Risk Modal */}
-      <PromoteRiskModal
-        open={showPromoteModal}
-        onOpenChange={setShowPromoteModal}
-        selectedControl={selectedControl}
-        onSubmit={handlePromoteSubmit}
-        isSubmitting={promoting}
       />
     </div>
   )

@@ -10,23 +10,34 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 // Types
+interface AssessmentData {
+  organization?: string;
+  assessor?: string;
+  date?: string;
+  status?: string;
+  controls?: Record<string, Record<string, any>>;
+  score?: number;
+  completion?: number;
+  promotedControls?: string[];
+}
+
 interface Assessment {
-  id?: string
+  id?: string;
   title?: string;
   description?: string;
-  client_name: string;        // For backward compatibility
-  organization_name?: string;  // New field name
+  client_name?: string;
+  organization_name?: string;
   assessor_name?: string;
   assessment_date?: string;
   status?: string;
   completion?: number;
   created_at: string;
   updated_at: string;
-  overall_score: number | null; // For backward compatibility
-  score?: number;  
+  overall_score: number | null;
+  score?: number;
   controls?: any;
   original_data?: any;
-  data?: any;
+  data?: AssessmentData;
 }
 
 interface Risk {
@@ -211,6 +222,34 @@ const app = new Elysia()
     assessmentService.delete(params.id)
     return { success: true }
   })
+  .put('/api/assessments/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const existingAssessment = assessmentService.getById(params.id)
+    if (!existingAssessment) throw new Error('Assessment not found')
+    
+    // Type guard for the body
+    if (typeof body !== 'object' || body === null) {
+      throw new Error('Invalid request body')
+    }
+    
+    const bodyData = (body as { data?: AssessmentData }).data || {}
+    const existingData = (existingAssessment as Assessment).data || {}
+    
+    // Merge the existing data with the update
+    const updatedAssessment: Assessment = {
+      ...(existingAssessment as Assessment),
+      ...(body as Partial<Assessment>),
+      data: {
+        ...existingData,
+        ...bodyData
+      },
+      created_at: (existingAssessment as Assessment).created_at,
+      updated_at: new Date().toISOString(),
+      overall_score: (existingAssessment as Assessment).overall_score
+    }
+    
+    return assessmentService.update(params.id, updatedAssessment)
+  })
   // Risk Management
   .get('/api/risks', async ({ query, headers, auth }) => {
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
@@ -294,7 +333,24 @@ const app = new Elysia()
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
     const assessment = assessmentService.getById(params.id)
     if (!assessment) throw new Error('Assessment not found')
-    const riskData = body as Partial<Risk>
+    
+    const riskData = body as Partial<Risk & { data?: { status?: string } }>
+    const controlId = riskData.control_id
+    
+    if (!controlId) {
+      throw new Error('Control ID is required when promoting to risk')
+    }
+    
+    // Check if this control has already been promoted to a risk
+    const existingRisks = riskService.getAll(params.id)
+    const existingPromotedRisk = existingRisks.find(risk => 
+      risk.data?.control_id === controlId
+    )
+    
+    if (existingPromotedRisk) {
+      throw new Error('This control has already been promoted to a risk')
+    }
+    
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
@@ -315,12 +371,34 @@ const app = new Elysia()
         risk_score,
         notes: riskData.notes || '',
         status: riskData.status || 'New',
-        control_id: riskData.control_id || 'CTRL-UNKNOWN'
+        control_id: controlId,
+        promoted_from: {
+          assessment_id: params.id,
+          control_id: controlId,
+          control_status: riskData.data?.status || 'Unknown'
+        }
       },
       created_at: now,
       updated_at: now
     }
-    return riskService.create(risk)
+    
+    // Create the risk
+    const createdRisk = riskService.create(risk)
+    
+    // Update the assessment's promoted controls list
+    const assessmentData = (assessment as Assessment).data || {}
+    const promotedControls = assessmentData.promotedControls || []
+    if (!promotedControls.includes(controlId)) {
+      promotedControls.push(controlId)
+      assessmentService.update(params.id, {
+        data: {
+          ...assessmentData,
+          promotedControls
+        }
+      })
+    }
+    
+    return createdRisk
   })
   // Security Objectives
   .get('/api/security-objectives', async ({ headers, auth }) => {

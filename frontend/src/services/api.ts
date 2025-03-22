@@ -30,6 +30,7 @@ export interface AssessmentData {
   controls: Record<string, Record<string, ControlStatus>>
   score?: number
   completion?: number
+  promotedControls?: string[] // Array of control IDs that have been promoted to risks
 }
 
 export interface ControlStatus {
@@ -42,6 +43,13 @@ export interface RiskData {
   likelihood: number
   risk_score: number
   notes?: string
+  status?: string
+  control_id?: string
+  promoted_from?: {
+    assessment_id: string
+    control_id: string
+    control_status: string
+  }
 }
 
 export interface SecurityObjectiveData {
@@ -128,6 +136,11 @@ export const assessments = {
 
   create: async (assessment: Omit<Assessment, 'id'>): Promise<Assessment> => {
     const response = await api.post('/assessments/import', assessment)
+    return response.data
+  },
+
+  update: async (id: string, assessment: Partial<Assessment>): Promise<Assessment> => {
+    const response = await api.put(`/assessments/${id}`, assessment)
     return response.data
   },
 
