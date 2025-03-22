@@ -1,0 +1,270 @@
+{
+  "assessment": {
+    "id": "1742042587931",
+    "name": "Annual Security Assessment",
+    "organization": "Acme Corporation",
+    "assessor": "Jane Smith",
+    "scope": "Corporate network and cloud infrastructure",
+    "date": "2025-03-15",
+    "status": "Completed",
+    "completion": 100,
+    "score": 78,
+    "controls": {
+      "AC": {
+        "AC-1": {
+          "status": "Implemented",
+          "notes": "Access control policy documented and distributed to all staff",
+          "score": 0
+        },
+        "AC-2": {
+          "status": "Implemented",
+          "notes": "Account management procedures in place and automated",
+          "score": 0
+        },
+        "AC-3": {
+          "status": "Implemented",
+          "notes": "Role-based access control implemented across all systems",
+          "score": 0
+        },
+        "AC-4": {
+          "status": "Partially Implemented",
+          "notes": "DLP solutions in place but some network segments still need implementation",
+          "score": 0
+        }
+      },
+      "AT": {
+        "AT-1": {
+          "status": "Implemented",
+          "notes": "Security awareness training policy established and maintained",
+          "score": 0
+        },
+        "AT-2": {
+          "status": "Implemented",
+          "notes": "All employees receive quarterly security awareness training",
+          "score": 0
+        },
+        "AT-3": {
+          "status": "Partially Implemented",
+          "notes": "Role-based training implemented for IT staff, but needs expansion",
+          "score": 0
+        },
+        "AT-4": {
+          "status": "Implemented",
+          "notes": "Training records maintained in LMS with automated notifications",
+          "score": 0
+        }
+      },
+      "AU": {
+        "AU-1": {
+          "status": "Implemented",
+          "notes": "Audit policy documented and reviewed annually",
+          "score": 0
+        },
+        "AU-2": {
+          "status": "Implemented",
+          "notes": "Comprehensive logging implemented across all critical systems",
+          "score": 0
+        },
+        "AU-3": {
+          "status": "Implemented",
+          "notes": "Audit records include all required information",
+          "score": 0
+        },
+        "AU-4": {
+          "status": "Partially Implemented",
+          "notes": "Some systems have limited storage capacity for extended audit retention",
+          "score": 0
+        }
+      },
+      "CA": {
+        "CA-1": {
+          "status": "Implemented",
+          "notes": "Assessment and authorization policies documented",
+          "score": 0
+        },
+        "CA-2": {
+          "status": "Partially Implemented",
+          "notes": "Assessment plans exist but need more comprehensive testing methods",
+          "score": 0
+        },
+        "CA-3": {
+          "status": "Partially Implemented",
+          "notes": "Information exchange agreements need updating for cloud services",
+          "score": 0
+        },
+        "CA-4": {
+          "status": "Implemented",
+          "notes": "POA&M process established and regularly updated",
+          "score": 0
+        }
+      },
+      "CM": {
+        "CM-1": {
+          "status": "Implemented",
+          "notes": "Configuration management policies well-documented",
+          "score": 0
+        },
+        "CM-2": {
+          "status": "Implemented",
+          "notes": "Baseline configurations documented for all system types",
+          "score": 0
+        },
+        "CM-3": {
+          "status": "Partially Implemented",
+          "notes": "Change control board established but some emergency changes bypass process",
+          "score": 0
+        },
+        "CM-4": {
+          "status": "Partially Implemented",
+          "notes": "Security impact analysis conducted but needs better documentation",
+          "score": 0
+        }
+      },
+      "CP": {
+        "CP-1": {
+          "status": "Implemented",
+          "notes": "Contingency planning policy established",
+          "score": 0
+        },
+        "CP-2": {
+          "status": "Implemented",
+          "notes": "Contingency plans documented for all critical systems",
+          "score": 0
+        },
+        "CP-3": {
+          "status": "Partially Implemented",
+          "notes": "Training conducted annually but needs more scenario-based exercises",
+          "score": 0
+        },
+        "CP-4": {
+          "status": "Partially Implemented",
+          "notes": "Testing performed but full recovery testing limited",
+          "score": 0
+        }
+      },
+      "IA": {
+        "IA-1": {
+          "status": "Implemented",
+          "notes": "Identification and authentication policies well-established",
+          "score": 0
+        },
+        "IA-2": {
+          "status": "Implemented",
+          "notes": "MFA implemented for all user access",
+          "score": 0
+        },
+        "IA-3": {
+          "status": "Partially Implemented",
+          "notes": "Device authentication implemented for servers but not all endpoints",
+          "score": 0
+        },
+        "IA-4": {
+          "status": "Implemented",
+          "notes": "Identifier management processes automated and integrated with HR",
+          "score": 0
+        }
+      },
+      "IR": {
+        "IR-1": {
+          "status": "Implemented",
+          "notes": "Incident response policy documented and maintained",
+          "score": 0
+        },
+        "IR-2": {
+          "status": "Implemented",
+          "notes": "IR team receives specialized training annually",
+          "score": 0
+        },
+        "IR-3": {
+          "status": "Partially Implemented",
+          "notes": "Tabletop exercises conducted but need more technical testing",
+          "score": 0
+        },
+        "IR-4": {
+          "status": "Implemented",
+          "notes": "Comprehensive incident handling procedures in place",
+          "score": 0
+        }
+      },
+      "MA": {
+        "MA-1": {
+          "status": "Partially Implemented",
+          "notes": "Maintenance policies documented but need review",
+          "score": 0
+        },
+        "MA-2": {
+          "status": "Partially Implemented",
+          "notes": "Maintenance records kept but approval process inconsistent",
+          "score": 0
+        },
+        "MA-3": {
+          "status": "Planned",
+          "notes": "Tool control process being developed, not yet implemented",
+          "score": 0
+        },
+        "MA-4": {
+          "status": "Implemented",
+          "notes": "Secure remote maintenance protocols established",
+          "score": 0
+        }
+      },
+      "MP": {
+        "MP-1": {
+          "status": "Implemented",
+          "notes": "Media protection policies established",
+          "score": 0
+        },
+        "MP-2": {
+          "status": "Implemented",
+          "notes": "Media access restrictions enforced through physical and technical controls",
+          "score": 0
+        },
+        "MP-3": {
+          "status": "Partially Implemented",
+          "notes": "Media marking inconsistently applied",
+          "score": 0
+        },
+        "MP-4": {
+          "status": "Partially Implemented",
+          "notes": "Secure storage implemented but some offsite locations need review",
+          "score": 0
+        }
+      },
+      "PA": {
+        "PA-1": {
+          "status": "Implemented",
+          "notes": "Physical security policies well-documented",
+          "score": 0
+        },
+        "PA-2": {
+          "status": "Implemented",
+          "notes": "Access authorization lists maintained and reviewed quarterly",
+          "score": 0
+        },
+        "PA-3": {
+          "status": "Implemented",
+          "notes": "Card access and biometric controls at all facilities",
+          "score": 0
+        },
+        "PA-4": {
+          "status": "Partially Implemented",
+          "notes": "Network distribution lines protected but some satellite locations need review",
+          "score": 0
+        }
+      },
+      "PE": {
+        "PE-1": {
+          "status": "Implemented",
+          "notes": "Physical protection policies established",
+          "score": 0
+        },
+        "PE-2": {
+          "status": "Implemented",
+          "notes": "Physical access authorization lists maintained and current",
+          "score": 0
+        }
+      }
+    },
+    "completionDate": "2025-03-15"
+  }
+}
