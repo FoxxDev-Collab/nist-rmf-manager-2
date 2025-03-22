@@ -40,6 +40,20 @@ interface Assessment {
   data?: AssessmentData;
 }
 
+interface RiskData {
+  impact?: number;
+  likelihood?: number;
+  risk_score?: number;
+  notes?: string;
+  status?: string;
+  control_id?: string;
+  promoted_from?: {
+    assessment_id: string;
+    control_id: string;
+    control_status: string;
+  };
+}
+
 interface Risk {
   id?: string
   assessmentId: string;
@@ -330,75 +344,80 @@ const app = new Elysia()
     return { success: true }
   })
   .post('/api/assessments/:id/promote-risk', async ({ params, body, headers, auth }) => {
-    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
-    const assessment = assessmentService.getById(params.id)
-    if (!assessment) throw new Error('Assessment not found')
-    
-    const riskData = body as Partial<Risk & { data?: { status?: string } }>
-    const controlId = riskData.control_id
-    
-    if (!controlId) {
-      throw new Error('Control ID is required when promoting to risk')
-    }
-    
-    // Check if this control has already been promoted to a risk
-    const existingRisks = riskService.getAll(params.id)
-    const existingPromotedRisk = existingRisks.find(risk => 
-      risk.data?.control_id === controlId
-    )
-    
-    if (existingPromotedRisk) {
-      throw new Error('This control has already been promoted to a risk')
-    }
-    
-    const id = crypto.randomUUID()
-    const now = new Date().toISOString()
-    
-    // Extract impact and likelihood, defaulting to 3 if not provided
-    const impact = riskData.impact || 3
-    const likelihood = riskData.likelihood || 3
-    // Calculate risk score as impact * likelihood
-    const risk_score = impact * likelihood
-    
-    const risk = {
-      id,
-      assessmentId: params.id,
-      title: riskData.title || 'Promoted Risk',
-      description: riskData.description || '',
-      data: {
-        impact,
-        likelihood,
-        risk_score,
-        notes: riskData.notes || '',
-        status: riskData.status || 'New',
-        control_id: controlId,
-        promoted_from: {
-          assessment_id: params.id,
-          control_id: controlId,
-          control_status: riskData.data?.status || 'Unknown'
-        }
-      },
-      created_at: now,
-      updated_at: now
-    }
-    
-    // Create the risk
-    const createdRisk = riskService.create(risk)
-    
-    // Update the assessment's promoted controls list
-    const assessmentData = (assessment as Assessment).data || {}
-    const promotedControls = assessmentData.promotedControls || []
-    if (!promotedControls.includes(controlId)) {
-      promotedControls.push(controlId)
-      assessmentService.update(params.id, {
+    try {
+      await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+      const assessment = assessmentService.getById(params.id)
+      if (!assessment) throw new Error('Assessment not found')
+      
+      const riskData = body as Partial<Risk & { data?: RiskData }>
+      const controlId = riskData.data?.control_id
+      
+      if (!controlId) {
+        throw new Error('Control ID is required when promoting to risk')
+      }
+      
+      // Check if this control has already been promoted to a risk
+      const existingRisks = riskService.getAll(params.id)
+      const existingPromotedRisk = existingRisks.find(risk => 
+        risk.data?.control_id === controlId
+      )
+      
+      if (existingPromotedRisk) {
+        throw new Error('This control has already been promoted to a risk')
+      }
+      
+      const id = crypto.randomUUID()
+      const now = new Date().toISOString()
+      
+      // Extract impact and likelihood from the risk data
+      const impact = riskData.data?.impact || 3
+      const likelihood = riskData.data?.likelihood || 3
+      const risk_score = impact * likelihood
+      
+      // Create the risk with proper data structure
+      const risk = {
+        id,
+        assessmentId: params.id,
+        title: riskData.title || 'Promoted Risk',
+        description: riskData.description || '',
         data: {
-          ...assessmentData,
-          promotedControls
-        }
-      })
+          impact,
+          likelihood,
+          risk_score,
+          notes: riskData.data?.notes || '',
+          status: riskData.data?.status || 'New',
+          control_id: controlId,
+          promoted_from: {
+            assessment_id: params.id,
+            control_id: controlId,
+            control_status: riskData.data?.status || 'Unknown'
+          }
+        },
+        created_at: now,
+        updated_at: now
+      }
+      
+      // Create the risk
+      const createdRisk = riskService.create(risk)
+      
+      // Update the assessment's promoted controls list
+      const assessmentData = (assessment as Assessment).data || {}
+      const promotedControls = assessmentData.promotedControls || []
+      if (!promotedControls.includes(controlId)) {
+        promotedControls.push(controlId)
+        await assessmentService.update(params.id, {
+          data: {
+            ...assessmentData,
+            promotedControls
+          }
+        })
+      }
+      
+      return createdRisk
+    } catch (error) {
+      console.error('Error promoting risk:', error)
+      throw error
     }
-    
-    return createdRisk
   })
   // Security Objectives
   .get('/api/security-objectives', async ({ headers, auth }) => {

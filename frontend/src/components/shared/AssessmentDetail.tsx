@@ -90,7 +90,7 @@ export default function AssessmentDetail({ id }: { id: string }) {
     try {
       const controlId = `${control.family}-${control.id}`
       
-      // Create the risk
+      // Create the risk with proper data structure
       await risks.promoteFromAssessment(assessment.id!, {
         title: `Risk from ${control.family}-${control.id}`,
         description: `Risk identified from control assessment with status: ${control.status.status}`,
@@ -108,11 +108,17 @@ export default function AssessmentDetail({ id }: { id: string }) {
       setPromotedControls(prev => new Set([...prev, controlId]))
       toast.success('Risk created successfully')
     } catch (error) {
-      if (error instanceof Error && error.message.includes('already been promoted')) {
-        toast.error('This control has already been promoted to a risk')
+      console.error('Error promoting to risk:', error)
+      if (error instanceof Error) {
+        if (error.message.includes('already been promoted')) {
+          toast.error('This control has already been promoted to a risk')
+        } else if (error.message.includes('Assessment not found')) {
+          toast.error('Assessment not found. Please refresh the page.')
+        } else {
+          toast.error(`Failed to create risk: ${error.message}`)
+        }
       } else {
-        toast.error('Failed to create risk')
-        console.error(error)
+        toast.error('Failed to create risk. Please try again.')
       }
     }
   }
