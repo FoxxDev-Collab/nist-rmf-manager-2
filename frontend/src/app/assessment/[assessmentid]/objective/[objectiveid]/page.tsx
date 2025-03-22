@@ -195,21 +195,13 @@ export default function ObjectiveDetailsPage() {
         risk_id: objectiveData.risk_id
       };
       
-      // Since there's no update method, use delete and create
-      await apiService.objectives.delete(objectiveId);
-      
-      // Create new objective with the same ID to maintain continuity
-      const now = new Date().toISOString();
-      await apiService.objectives.create({
+      // Update the objective using the new update method
+      const updated = await apiService.objectives.update(objectiveId, {
         title: formData.title,
         description: formData.description || '',
-        data: updatedData,
-        created_at: objective.created_at || now,
-        updated_at: now
+        data: updatedData
       });
       
-      // Refresh objective data
-      const updated = await apiService.objectives.getById(objectiveId);
       setObjective(updated);
       setEditMode(false);
     } catch (err) {

@@ -19,31 +19,29 @@ const scoreClasses = {
     bg: 'bg-red-600',
     text: 'text-red-600',
     border: 'border-red-600',
-    lightBg: 'bg-red-100'
+    lightBg: 'bg-red-100',
+    color: '#dc2626'
   },
-  poor: {
+  high: {
     bg: 'bg-orange-500',
     text: 'text-orange-500',
     border: 'border-orange-500',
-    lightBg: 'bg-orange-100'
+    lightBg: 'bg-orange-100',
+    color: '#f97316'
   },
-  fair: {
+  medium: {
     bg: 'bg-yellow-500',
     text: 'text-yellow-500',
     border: 'border-yellow-500',
-    lightBg: 'bg-yellow-100'
+    lightBg: 'bg-yellow-100',
+    color: '#eab308'
   },
-  good: {
+  low: {
     bg: 'bg-green-500',
     text: 'text-green-500',
     border: 'border-green-500',
-    lightBg: 'bg-green-100'
-  },
-  excellent: {
-    bg: 'bg-emerald-500',
-    text: 'text-emerald-500',
-    border: 'border-emerald-500',
-    lightBg: 'bg-emerald-100'
+    lightBg: 'bg-green-100',
+    color: '#22c55e'
   }
 };
 
@@ -135,13 +133,30 @@ export default function RisksPage() {
   };
 
   // Handle saving updated risk
-  const handleSaveRisk = (updatedRisk: Risk) => {
-    // Update local state
-    setRisks(prevRisks => 
-      prevRisks.map(risk => 
-        risk.id === updatedRisk.id ? updatedRisk : risk
-      )
-    );
+  const handleSaveRisk = async () => {
+    try {
+      // Refresh the risks data
+      const risksData = await apiService.risks.getAll(assessmentId);
+      
+      // Make sure all risks have a valid assessmentId
+      const fixedRisks = risksData.map(risk => {
+        if (!risk.assessmentId || risk.assessmentId === '') {
+          return {
+            ...risk,
+            assessmentId: assessmentId
+          };
+        }
+        return risk;
+      });
+      
+      setRisks(fixedRisks);
+      setFilteredRisks(fixedRisks);
+      setIsEditModalOpen(false);
+      setCurrentRisk(null);
+    } catch (err) {
+      console.error('Error refreshing risks after save:', err);
+      setError('Failed to refresh risks data. Please try again.');
+    }
   };
 
   // Get assessment title by ID
@@ -150,36 +165,41 @@ export default function RisksPage() {
     return assessment ? assessment.title : 'Unknown Assessment';
   };
 
-  // Calculate risk level based on risk score
-  const getRiskLevel = (score: number) => {
-    if (score >= 15) return { level: 'Critical', color: scoreClasses.critical.bg };
-    if (score >= 10) return { level: 'High', color: scoreClasses.poor.bg };
-    if (score >= 5) return { level: 'Medium', color: scoreClasses.fair.bg };
-    return { level: 'Low', color: scoreClasses.good.bg };
-  };
-
-  // Get CSS class based on assessment score
-  const getScoreClass = (score: number) => {
-    if (score < 30) return scoreClasses.critical;
-    if (score < 50) return scoreClasses.poor;
-    if (score < 70) return scoreClasses.fair;
-    if (score < 85) return scoreClasses.good;
-    return scoreClasses.excellent;
-  };
-
-  // Calculate detailed score based on impact and likelihood
-  const getDetailedScore = (impact: number, likelihood: number) => {
-    // Base score is impact * likelihood (range 1-25)
+  // Calculate risk level based on impact and likelihood
+  const getRiskLevel = (impact: number, likelihood: number) => {
+    // Calculate base score (1-25)
     const baseScore = impact * likelihood;
     
-    // Map to a more standard 0-100 scale for consistency with assessment scores
-    // Using a simple scaling: (baseScore / 25) * 100
-    const scaledScore = Math.round((baseScore / 25) * 100);
+    // Scale to 0-100 and invert the scale (higher score = lower risk)
+    const score = 100 - ((baseScore / 25) * 100);
     
-    return {
-      baseScore,
-      scaledScore
-    };
+    if (score < 30) return { level: 'Critical', color: scoreClasses.critical.bg };
+    if (score < 50) return { level: 'High', color: scoreClasses.high.bg };
+    if (score < 70) return { level: 'Medium', color: scoreClasses.medium.bg };
+    return { level: 'Low', color: scoreClasses.low.bg };
+  };
+
+  // Get CSS class based on risk score
+  const getScoreClass = (impact: number, likelihood: number) => {
+    // Calculate base score (1-25)
+    const baseScore = impact * likelihood;
+    
+    // Scale to 0-100 and invert the scale (higher score = lower risk)
+    const score = 100 - ((baseScore / 25) * 100);
+    
+    if (score < 30) return scoreClasses.critical;
+    if (score < 50) return scoreClasses.high;
+    if (score < 70) return scoreClasses.medium;
+    return scoreClasses.low;
+  };
+
+  // Calculate risk score based on impact and likelihood
+  const getRiskScore = (impact: number, likelihood: number) => {
+    // Calculate base score (1-25)
+    const baseScore = impact * likelihood;
+    
+    // Scale to 0-100 and invert the scale (higher score = lower risk)
+    return 100 - ((baseScore / 25) * 100);
   };
 
   // Handle promoting a risk to an objective
@@ -309,9 +329,9 @@ export default function RisksPage() {
           ) : (
             <div className="space-y-4">
               {filteredRisks.map(risk => {
-                const { level, color } = getRiskLevel(risk.data.risk_score);
-                const detailedScore = getDetailedScore(risk.data.impact, risk.data.likelihood);
-                const scoreClass = getScoreClass(detailedScore.scaledScore);
+                const { level, color } = getRiskLevel(risk.data.impact, risk.data.likelihood);
+                const scoreClass = getScoreClass(risk.data.impact, risk.data.likelihood);
+                const riskScore = getRiskScore(risk.data.impact, risk.data.likelihood);
                 
                 return (
                   <Card key={risk.id} className="group relative hover:shadow-md transition-shadow">
@@ -325,10 +345,10 @@ export default function RisksPage() {
                         </div>
                         <div className="flex flex-col items-end gap-1">
                           <Badge className={`${color} hover:${color}`}>
-                            {level} Risk ({risk.data.risk_score})
+                            {level} Risk
                           </Badge>
                           <span className={`text-xs ${scoreClass.text} font-medium`}>
-                            Score: {detailedScore.scaledScore}/100
+                            Score: {riskScore}/100
                           </span>
                         </div>
                       </div>
@@ -347,13 +367,9 @@ export default function RisksPage() {
                         </div>
                       </div>
                       
-                      <div className="mt-3">
-                        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${scoreClass.bg}`} 
-                            style={{ width: `${detailedScore.scaledScore}%` }}
-                          ></div>
-                        </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-sm font-medium">Risk Score:</span>
+                        <span className={`text-sm ${scoreClass.text}`}>{riskScore}/100</span>
                       </div>
                     </CardContent>
                     
@@ -415,19 +431,17 @@ export default function RisksPage() {
                     <div className="space-y-2">
                       {[
                         { name: 'Critical', threshold: 30, class: scoreClasses.critical },
-                        { name: 'High', threshold: 50, class: scoreClasses.poor },
-                        { name: 'Medium', threshold: 70, class: scoreClasses.fair },
-                        { name: 'Low', threshold: 85, class: scoreClasses.good },
-                        { name: 'Minimal', threshold: 101, class: scoreClasses.excellent },
+                        { name: 'High', threshold: 50, class: scoreClasses.high },
+                        { name: 'Medium', threshold: 70, class: scoreClasses.medium },
+                        { name: 'Low', threshold: 101, class: scoreClasses.low }
                       ].map(category => {
                         const prevThreshold = category.name === 'Critical' ? 0 : 
                           category.name === 'High' ? 30 :
-                          category.name === 'Medium' ? 50 :
-                          category.name === 'Low' ? 70 : 85;
+                          category.name === 'Medium' ? 50 : 70;
                         
                         const count = filteredRisks.filter(risk => {
-                          const scaledScore = getDetailedScore(risk.data.impact, risk.data.likelihood).scaledScore;
-                          return scaledScore >= prevThreshold && scaledScore < category.threshold;
+                          const score = getRiskScore(risk.data.impact, risk.data.likelihood);
+                          return score >= prevThreshold && score < category.threshold;
                         }).length;
                         
                         const percentage = filteredRisks.length > 0 

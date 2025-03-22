@@ -61,21 +61,12 @@ export default function Header() {
               </Link>
 
               <Link 
-                href={`/assessment/${currentAssessmentId}/objectives`}
+                href={`/assessment/${currentAssessmentId}/objective`}
                 className={`text-sm font-medium transition-colors hover:text-primary ${
                   pathname === `/assessment/${currentAssessmentId}/objectives` ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
                 Objectives
-              </Link>
-
-              <Link 
-                href={`/assessment/${currentAssessmentId}/initiatives`}
-                className={`text-sm font-medium transition-colors hover:text-primary ${
-                  pathname === `/assessment/${currentAssessmentId}/initiatives` ? 'text-primary' : 'text-muted-foreground'
-                }`}
-              >
-                Initiatives
               </Link>
             </>
           )}

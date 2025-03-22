@@ -56,6 +56,24 @@ export interface SecurityObjectiveData {
   description: string
   status: string
   priority: number
+  progress?: number
+  risk_notes?: string
+  startDate?: string
+  targetCompletionDate?: string
+  actualCompletionDate?: string
+  budget?: {
+    allocated: number
+    spent: number
+    currency: string
+  }
+  milestones?: Array<{
+    id: string
+    title: string
+    dueDate: string
+    completed: boolean
+  }>
+  assignees?: string[]
+  risk_id?: string
 }
 
 export interface InitiativeData {
@@ -197,6 +215,11 @@ export const objectives = {
 
   create: async (objective: Omit<SecurityObjective, 'id'>): Promise<SecurityObjective> => {
     const response = await api.post('/security-objectives', objective)
+    return response.data
+  },
+
+  update: async (id: string, objective: Partial<SecurityObjective>): Promise<SecurityObjective> => {
+    const response = await api.put(`/security-objectives/${id}`, objective)
     return response.data
   },
 

@@ -14,61 +14,40 @@ const scoreClasses = {
     lightBg: 'bg-red-100',
     color: '#dc2626'
   },
-  poor: {
+  high: {
     bg: 'bg-orange-500',
     text: 'text-orange-500',
     border: 'border-orange-500',
     lightBg: 'bg-orange-100',
     color: '#f97316'
   },
-  fair: {
+  medium: {
     bg: 'bg-yellow-500',
     text: 'text-yellow-500',
     border: 'border-yellow-500',
     lightBg: 'bg-yellow-100',
     color: '#eab308'
   },
-  good: {
+  low: {
     bg: 'bg-green-500',
     text: 'text-green-500',
     border: 'border-green-500',
     lightBg: 'bg-green-100',
     color: '#22c55e'
-  },
-  excellent: {
-    bg: 'bg-emerald-500',
-    text: 'text-emerald-500',
-    border: 'border-emerald-500',
-    lightBg: 'bg-emerald-100',
-    color: '#10b981'
   }
 };
 
-// Get CSS class based on assessment score
-const getScoreClass = (score: number) => {
-  if (score < 30) return scoreClasses.critical;
-  if (score < 50) return scoreClasses.poor;
-  if (score < 70) return scoreClasses.fair;
-  if (score < 85) return scoreClasses.good;
-  return scoreClasses.excellent;
-};
-
-// Get risk level text based on score
-const getRiskLevelText = (score: number): string => {
-  if (score < 30) return 'Critical Risk';
-  if (score < 50) return 'High Risk';
-  if (score < 70) return 'Medium Risk';
-  if (score < 85) return 'Low Risk';
-  return 'Minimal Risk';
-};
-
 interface RiskScoreCardProps {
-  score: number;
+  score: number;  // 0-100 scale
 }
 
 export function RiskScoreCard({ score }: RiskScoreCardProps) {
   const [animatedScore, setAnimatedScore] = useState(0);
-  const scoreClass = getScoreClass(score);
+  
+  const scoreClass = score < 30 ? scoreClasses.critical :
+                     score < 50 ? scoreClasses.high :
+                     score < 70 ? scoreClasses.medium :
+                     scoreClasses.low;
   
   // Animate the score on mount
   useEffect(() => {
@@ -84,6 +63,13 @@ export function RiskScoreCard({ score }: RiskScoreCardProps) {
     { name: 'Score', value: animatedScore },
     { name: 'Remaining', value: 100 - animatedScore }
   ];
+
+  const getRiskLevelText = (score: number): string => {
+    if (score < 30) return 'Critical Risk';
+    if (score < 50) return 'High Risk';
+    if (score < 70) return 'Medium Risk';
+    return 'Low Risk';
+  };
   
   return (
     <Card>
@@ -135,12 +121,6 @@ export function RiskScoreCard({ score }: RiskScoreCardProps) {
           <Badge className={`${scoreClass.bg} text-white mt-4`}>
             {getRiskLevelText(score)}
           </Badge>
-          
-          <div className="w-full mt-4 text-center">
-            <p className="text-sm text-muted-foreground">
-              A score above 85 indicates minimal risk, while a score below 30 indicates critical risk.
-            </p>
-          </div>
         </div>
       </CardContent>
     </Card>

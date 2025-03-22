@@ -80,6 +80,11 @@ interface SecurityObjective {
   updated_at: string;
   risks?: Risk[];
   initiatives?: Initiative[];
+  data?: {
+    status: string;
+    priority: number;
+    progress: number;
+  };
 }
 
 interface Initiative {
@@ -441,10 +446,10 @@ const app = new Elysia()
       id,
       title: objective.title,
       description: objective.description || '',
-      data: {
-        status: objective.status || 'New',
-        target_date: objective.target_date || '',
-        description: objective.description || ''
+      data: objective.data || {
+        status: 'Planning',
+        priority: 3,
+        progress: 0
       },
       created_at: objective.created_at || now,
       updated_at: now
@@ -456,6 +461,25 @@ const app = new Elysia()
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
     objectiveService.delete(params.id)
     return { success: true }
+  })
+  .put('/api/security-objectives/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const objective = body as SecurityObjective
+    const now = new Date().toISOString()
+    
+    // Convert objective from API schema to database schema
+    const objectiveData = {
+      title: objective.title,
+      description: objective.description || '',
+      data: objective.data || {
+        status: 'Planning',
+        priority: 3,
+        progress: 0
+      },
+      updated_at: now
+    }
+    
+    return objectiveService.update(params.id, objectiveData)
   })
   // Initiatives
   .get('/api/initiatives', async ({ query, headers, auth }) => {

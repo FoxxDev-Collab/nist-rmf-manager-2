@@ -167,7 +167,12 @@ export default function CreateObjectivePage() {
       await apiService.objectives.create({
         title: title,
         description: description,
-        data: objectiveData
+        data: {
+          ...objectiveData,
+          status: status,
+          priority: parseInt(priority),
+          progress: 0
+        }
       });
 
       // Navigate back to objectives page with success message

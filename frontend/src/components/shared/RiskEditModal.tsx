@@ -36,13 +36,14 @@ export default function RiskEditModal({ isOpen, onClose, risk, onSave, assessmen
   const [error, setError] = useState<string | null>(null);
 
   // Calculate risk score
-  const riskScore = impact * likelihood;
+  const baseScore = impact * likelihood;
+  const riskScore = 100 - ((baseScore / 25) * 100);
 
   // Get risk level based on score
   const getRiskLevel = (score: number) => {
-    if (score >= 15) return { level: 'Critical', color: 'text-red-500' };
-    if (score >= 10) return { level: 'High', color: 'text-orange-500' };
-    if (score >= 5) return { level: 'Medium', color: 'text-yellow-500' };
+    if (score < 30) return { level: 'Critical', color: 'text-red-600' };
+    if (score < 50) return { level: 'High', color: 'text-orange-500' };
+    if (score < 70) return { level: 'Medium', color: 'text-yellow-500' };
     return { level: 'Low', color: 'text-green-500' };
   };
 
@@ -199,7 +200,7 @@ export default function RiskEditModal({ isOpen, onClose, risk, onSave, assessmen
             <div className="text-sm font-medium mb-1">Risk Score:</div>
             <div className="flex items-center">
               <div className={`text-2xl font-bold ${color}`}>
-                {riskScore}
+                {Math.round(riskScore)}/100
               </div>
               <div className={`ml-2 ${color}`}>
                 ({level})
