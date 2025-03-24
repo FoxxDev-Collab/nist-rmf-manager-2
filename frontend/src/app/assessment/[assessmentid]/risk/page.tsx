@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, Plus, Search, Trash2, Edit3, ArrowUpCircle, CheckCircle } from 'lucide-react';
+import { AlertCircle, Plus, Search, Trash2, Edit3, ArrowUpCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import RiskMatrixOverview from '@/components/shared/RiskMatrixOverview';
 import RiskEditModal from '@/components/shared/RiskEditModal';
@@ -59,7 +59,6 @@ export default function RisksPage() {
   // State for the edit modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentRisk, setCurrentRisk] = useState<Risk | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch risks and assessments
   useEffect(() => {
@@ -232,22 +231,6 @@ export default function RisksPage() {
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {successMessage && (
-        <Alert variant="default" className="bg-green-50 border-green-200">
-          <CheckCircle className="h-4 w-4 text-green-500" />
-          <AlertDescription className="text-green-700">
-            {successMessage}{' '}
-            <Button 
-              variant="link" 
-              className="h-auto p-0 text-green-700 font-bold underline"
-              onClick={() => router.push(`/assessment/${assessmentId}/objective`)}
-            >
-              View all objectives
-            </Button>
-          </AlertDescription>
         </Alert>
       )}
 

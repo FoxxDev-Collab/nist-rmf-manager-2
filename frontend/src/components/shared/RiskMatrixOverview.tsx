@@ -59,8 +59,8 @@ const RiskMatrixImproved: React.FC<RiskMatrixImprovedProps> = ({ risks = [] }) =
   };
 
   return (
-    <div className="w-full p-4 border rounded-lg bg-white">
-      <h3 className="text-lg font-medium mb-4">Risk Distribution</h3>
+    <div className="w-full p-4 border rounded-lg bg-white dark:bg-gray-800 dark:border-gray-700">
+      <h3 className="text-lg font-medium mb-4 dark:text-white">Risk Distribution</h3>
       
       <div className="h-64">
         <ResponsiveContainer width="100%" height="100%">
@@ -76,12 +76,17 @@ const RiskMatrixImproved: React.FC<RiskMatrixImprovedProps> = ({ risks = [] }) =
                 <Cell key={`cell-${index}`} fill={getRiskColor(entry.name)} />
               ))}
             </Pie>
-            <Tooltip />
+            <Tooltip contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '0.375rem', border: '1px solid #e5e7eb', color: '#1f2937', 
+              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'}} 
+              wrapperStyle={{ outline: 'none' }}
+              itemStyle={{ color: '#1f2937' }}
+              formatter={(value: number) => [`${value} Risk(s)`, '']}
+              labelFormatter={(name) => `${name}`} />
           </PieChart>
         </ResponsiveContainer>
       </div>
       
-      <div className="flex justify-between mt-4 text-sm">
+      <div className="flex justify-between mt-4 text-sm dark:text-gray-300">
         <div className="flex items-center">
           <span className="h-3 w-3 rounded-full bg-red-600 mr-1"></span>
           <span>Critical</span>

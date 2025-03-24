@@ -20,17 +20,14 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
-  BarChart4
+  BarChart4,
+  PieChart,
+  ExternalLink
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Progress } from "@/components/ui/progress";
+import ObjectivesOverview from '@/components/shared/ObjectivesOverview';
 
 // Enhanced objective data model with project management fields
 interface EnhancedSecurityObjectiveData extends SecurityObjectiveData {
@@ -63,11 +60,13 @@ export default function ObjectivesPage() {
   const assessmentId = params.assessmentid as string;
   const [objectives, setObjectives] = useState<SecurityObjective[]>([]);
   const [riskQueue, setRiskQueue] = useState<Risk[]>([]);
-  const [filteredObjectives, setFilteredObjectives] = useState<SecurityObjective[]>([]);
+  const [completedObjectives, setCompletedObjectives] = useState<SecurityObjective[]>([]);
+  const [activeObjectives, setActiveObjectives] = useState<SecurityObjective[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const router = useRouter();
 
   // Check for success message in URL
@@ -99,7 +98,20 @@ export default function ObjectivesPage() {
         ]);
         
         setObjectives(objectivesData);
-        setFilteredObjectives(objectivesData);
+        
+        // Separate completed and active objectives
+        const completed = objectivesData.filter(objective => {
+          const data = getObjectiveData(objective.data);
+          return data.status.toLowerCase() === 'completed';
+        });
+        
+        const active = objectivesData.filter(objective => {
+          const data = getObjectiveData(objective.data);
+          return data.status.toLowerCase() !== 'completed';
+        });
+        
+        setCompletedObjectives(completed);
+        setActiveObjectives(active);
         
         // Filter the risk queue to exclude risks that have already been converted to objectives
         // by checking the risk_id property in the objectives' data
@@ -127,18 +139,33 @@ export default function ObjectivesPage() {
 
   // Filter objectives based on search query
   useEffect(() => {
-    let result = objectives;
-    
-    // Filter by search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(objective => 
-        objective.title.toLowerCase().includes(query) || 
-        (objective.description && objective.description.toLowerCase().includes(query))
-      );
+    if (!searchQuery) {
+      // Reset to original state when search is cleared
+      return;
     }
     
-    setFilteredObjectives(result);
+    const query = searchQuery.toLowerCase();
+    
+    // Filter objectives
+    const filtered = objectives.filter(objective => 
+      objective.title.toLowerCase().includes(query) || 
+      (objective.description && objective.description.toLowerCase().includes(query))
+    );
+    
+    // Also update completed and active objectives
+    const completedFiltered = filtered.filter(objective => {
+      const data = getObjectiveData(objective.data);
+      return data.status.toLowerCase() === 'completed';
+    });
+    
+    const activeFiltered = filtered.filter(objective => {
+      const data = getObjectiveData(objective.data);
+      return data.status.toLowerCase() !== 'completed';
+    });
+    
+    setCompletedObjectives(completedFiltered);
+    setActiveObjectives(activeFiltered);
+    
   }, [searchQuery, objectives]);
 
   const handleDelete = async (id: string) => {
@@ -209,6 +236,21 @@ export default function ObjectivesPage() {
     }
   };
 
+  // Set the initial active tab when data is loaded
+  useEffect(() => {
+    if (!loading) {
+      // Determine the default tab to show
+      const getDefaultTab = () => {
+        if (riskQueue.length > 0) return 'queue';
+        if (activeObjectives.length > 0) return 'active';
+        if (completedObjectives.length > 0) return 'completed';
+        return 'overview'; // Default to overview if nothing else has content
+      };
+      
+      setActiveTab(getDefaultTab());
+    }
+  }, [loading, riskQueue.length, activeObjectives.length, completedObjectives.length]);
+
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -219,7 +261,14 @@ export default function ObjectivesPage() {
           </p>
         </div>
         <div className="flex space-x-2">
-          <Button onClick={() => router.push(`/assessment/${assessmentId}/risk`)}>
+          <Button onClick={() => router.push(`/assessment/${assessmentId}/objective/create`)}>
+            <Plus className="h-4 w-4 mr-1" />
+            New Objective
+          </Button>
+          <Button 
+            variant="outline"
+            onClick={() => router.push(`/assessment/${assessmentId}/risk`)}
+          >
             View All Risks
           </Button>
         </div>
@@ -263,8 +312,12 @@ export default function ObjectivesPage() {
       {loading ? (
         <div className="text-center py-12">Loading data...</div>
       ) : (
-        <Tabs defaultValue="queue" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="mb-6">
+            <TabsTrigger value="overview" className="flex items-center">
+              <PieChart className="h-4 w-4 mr-2" />
+              Overview
+            </TabsTrigger>
             <TabsTrigger value="queue" className="flex items-center">
               <ArrowUpRight className="h-4 w-4 mr-2" />
               Risk Queue
@@ -272,15 +325,53 @@ export default function ObjectivesPage() {
                 <Badge className="ml-2 bg-red-500">{riskQueue.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="objectives" className="flex items-center">
-              <ClipboardList className="h-4 w-4 mr-2" />
-              Active Objectives
-              {objectives.length > 0 && (
-                <Badge className="ml-2">{objectives.length}</Badge>
+            <TabsTrigger value="active" className="flex items-center">
+              <BarChart4 className="h-4 w-4 mr-2" />
+              In Progress
+              {activeObjectives.length > 0 && (
+                <Badge className="ml-2 bg-blue-500">{activeObjectives.length}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="flex items-center">
+              <CheckCircle2 className="h-4 w-4 mr-2" />
+              Completed
+              {completedObjectives.length > 0 && (
+                <Badge className="ml-2 bg-green-500">{completedObjectives.length}</Badge>
               )}
             </TabsTrigger>
           </TabsList>
           
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="mt-0">
+            {objectives.length === 0 ? (
+              <div className="text-center py-12 border dark:border-border rounded-lg">
+                <p className="text-muted-foreground">No security objectives found.</p>
+                <div className="mt-4 flex justify-center space-x-4">
+                  <Button 
+                    onClick={() => router.push(`/assessment/${assessmentId}/objective/create`)}
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create New Objective
+                  </Button>
+                  {riskQueue.length > 0 && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setActiveTab('queue')}
+                      className="gap-1"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                      View Risk Queue
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <ObjectivesOverview objectives={objectives} />
+            )}
+          </TabsContent>
+          
+          {/* Risk Queue Tab */}
           <TabsContent value="queue" className="mt-0">
             <Card>
               <CardHeader>
@@ -304,7 +395,7 @@ export default function ObjectivesPage() {
               </CardHeader>
               <CardContent>
                 {riskQueue.length === 0 ? (
-                  <div className="text-center py-8 border-2 border-dashed rounded-lg">
+                  <div className="text-center py-8 border-2 border-dashed dark:border-border/50 rounded-lg">
                     <p className="text-muted-foreground">No risks in the queue</p>
                     <p className="text-sm text-muted-foreground mt-2 mb-3">
                       All identified risks have been addressed or there are no risks requiring attention.
@@ -318,16 +409,16 @@ export default function ObjectivesPage() {
                     </Button>
                   </div>
                 ) : (
-                  <Accordion type="single" collapsible className="w-full">
+                  <div className="space-y-3">
                     {riskQueue.map(risk => {
                       const { level, color } = getRiskLevel(risk.data.risk_score);
                       return (
-                        <AccordionItem key={risk.id} value={risk.id!} className="border rounded-md mb-3 overflow-hidden">
+                        <div key={risk.id} className="border dark:border-border rounded-md overflow-hidden">
                           <div className="flex justify-between items-center p-4">
                             <div className="flex-1">
                               <div className="flex items-center">
                                 <h3 className="text-lg font-medium">{risk.title}</h3>
-                                <Badge className={`ml-2 ${color}`}>
+                                <Badge className={`ml-2 ${color} text-white dark:text-white`}>
                                   {level} ({risk.data.risk_score})
                                 </Badge>
                               </div>
@@ -339,67 +430,69 @@ export default function ObjectivesPage() {
                               <Button 
                                 onClick={() => handleCreateObjective(risk)}
                                 size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white gap-1"
+                                className="bg-blue-600 hover:bg-blue-700 text-white gap-1 dark:bg-blue-700 dark:hover:bg-blue-800"
                               >
                                 <Plus className="h-4 w-4" />
                                 Convert to Objective
                               </Button>
-                              <AccordionTrigger className="h-9 w-9 p-0 m-0 justify-center" />
+                              <Button 
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push(`/assessment/${assessmentId}/risk`)}
+                                className="gap-1"
+                              >
+                                <ExternalLink className="h-4 w-4" />
+                                View Risks
+                              </Button>
                             </div>
                           </div>
-                          <AccordionContent className="border-t px-4 py-3 bg-gray-50">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div>
-                                <h4 className="font-medium mb-2">Risk Details</h4>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Impact:</span>
-                                    <span className="text-sm font-medium">{risk.data.impact}/5</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-sm text-muted-foreground">Likelihood:</span>
-                                    <span className="text-sm font-medium">{risk.data.likelihood}/5</span>
-                                  </div>
-                                </div>
-                              </div>
-                              <div>
-                                <h4 className="font-medium mb-2">Notes</h4>
-                                <p className="text-sm text-muted-foreground">
-                                  {risk.data.notes || 'No additional notes provided'}
-                                </p>
-                              </div>
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
+                        </div>
                       );
                     })}
-                  </Accordion>
+                  </div>
                 )}
               </CardContent>
             </Card>
           </TabsContent>
           
-          <TabsContent value="objectives" className="mt-0">
-            {filteredObjectives.length === 0 ? (
-              <div className="text-center py-12 border rounded-lg">
-                <p className="text-muted-foreground">No security objectives found.</p>
-                <p className="mt-2 text-muted-foreground">
-                  Create objectives from risks in the queue.
-                </p>
+          {/* Active Objectives Tab */}
+          <TabsContent value="active" className="mt-0">
+            {activeObjectives.length === 0 ? (
+              <div className="text-center py-12 border dark:border-border rounded-lg">
+                <p className="text-muted-foreground">No active objectives found.</p>
+                <div className="mt-4 flex justify-center space-x-4">
+                  <Button 
+                    onClick={() => router.push(`/assessment/${assessmentId}/objective/create`)}
+                    className="gap-1"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create New Objective
+                  </Button>
+                  {riskQueue.length > 0 && (
+                    <Button 
+                      variant="outline"
+                      onClick={() => setActiveTab('queue')}
+                      className="gap-1"
+                    >
+                      <ArrowUpRight className="h-4 w-4" />
+                      View Risk Queue
+                    </Button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredObjectives.map(objective => {
+                {activeObjectives.map(objective => {
                   const data = getObjectiveData(objective.data);
                   const { level, color } = getPriorityInfo(data.priority || 3);
                   const statusInfo = getStatusInfo(data.status);
                   
                   return (
-                    <Card key={objective.id} className="group relative hover:shadow-md transition-shadow">
+                    <Card key={objective.id} className="group relative hover:shadow-md transition-shadow border dark:border-border">
                       <CardHeader className="pb-2">
                         <div className="flex justify-between items-start">
                           <CardTitle className="text-lg">{objective.title}</CardTitle>
-                          <Badge className={`${color} text-white`}>
+                          <Badge className={`${color} text-white dark:text-white`}>
                             {level} Priority
                           </Badge>
                         </div>
@@ -419,8 +512,8 @@ export default function ObjectivesPage() {
                         {data.progress !== undefined && (
                           <div className="mb-3">
                             <div className="flex justify-between text-xs mb-1">
-                              <span>Progress</span>
-                              <span>{data.progress}%</span>
+                              <span className="text-foreground dark:text-foreground">Progress</span>
+                              <span className="text-foreground dark:text-foreground">{data.progress}%</span>
                             </div>
                             <Progress value={data.progress} className="h-2" />
                           </div>
@@ -465,8 +558,8 @@ export default function ObjectivesPage() {
                         </div>
                         
                         {data.risk_notes && (
-                          <div className="mt-3 p-2 bg-gray-50 rounded-md text-sm">
-                            <strong>Risk Notes:</strong> {String(data.risk_notes)}
+                          <div className="mt-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-md text-sm">
+                            <strong className="text-foreground dark:text-foreground">Risk Notes:</strong> <span className="text-foreground dark:text-foreground">{String(data.risk_notes)}</span>
                           </div>
                         )}
                       </CardContent>
@@ -482,7 +575,7 @@ export default function ObjectivesPage() {
                         <Button 
                           variant="outline" 
                           size="sm" 
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:hover:text-red-400"
                           onClick={() => handleDelete(objective.id!)}
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
@@ -492,6 +585,171 @@ export default function ObjectivesPage() {
                     </Card>
                   );
                 })}
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Completed Objectives Tab */}
+          <TabsContent value="completed" className="mt-0">
+            {completedObjectives.length === 0 ? (
+              <div className="text-center py-12 border dark:border-border rounded-lg">
+                <p className="text-muted-foreground">No completed objectives found.</p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Objectives will appear here when they are marked as completed.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center">
+                      <CheckCircle2 className="h-5 w-5 mr-2 text-green-500" />
+                      Completed Objectives
+                    </CardTitle>
+                    <CardDescription>
+                      Showing {completedObjectives.length} completed security objectives
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {completedObjectives.map(objective => {
+                        const data = getObjectiveData(objective.data);
+                        
+                        return (
+                          <div 
+                            key={objective.id} 
+                            className="flex justify-between items-center p-4 border dark:border-border rounded-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                          >
+                            <div className="flex-1">
+                              <div className="flex items-center">
+                                <h3 className="text-lg font-medium">{objective.title}</h3>
+                                <Badge className="ml-2 bg-green-500 text-white dark:text-white">Completed</Badge>
+                                {data.targetCompletionDate && data.actualCompletionDate && (
+                                  <Badge className="ml-2 bg-blue-500 text-white dark:text-white" variant="outline">
+                                    {new Date(data.actualCompletionDate) <= new Date(data.targetCompletionDate) 
+                                      ? 'On Time' 
+                                      : 'Overdue'}
+                                  </Badge>
+                                )}
+                              </div>
+                              <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                                {objective.description || 'No description provided.'}
+                              </p>
+                              <div className="flex mt-2 text-xs text-muted-foreground gap-3">
+                                {data.actualCompletionDate && (
+                                  <div className="flex items-center">
+                                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+                                    Completed: {new Date(data.actualCompletionDate).toLocaleDateString()}
+                                  </div>
+                                )}
+                                {data.risk_id && (
+                                  <div className="flex items-center">
+                                    <ArrowUpRight className="h-3 w-3 mr-1" />
+                                    From Risk
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex space-x-2">
+                              <Button 
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => router.push(`/assessment/${assessmentId}/objective/${objective.id}`)}
+                              >
+                                View Details
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                {/* Completed Objectives Metrics */}
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Completion Metrics</CardTitle>
+                    <CardDescription>Performance summary of completed objectives</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-md border border-green-100 dark:border-green-900">
+                        <h3 className="text-sm font-medium text-green-700 dark:text-green-400 mb-1">On Time Completion</h3>
+                        <div className="flex items-end justify-between">
+                          <span className="text-2xl font-bold text-green-700 dark:text-green-400">
+                            {completedObjectives.filter(obj => {
+                              const data = getObjectiveData(obj.data);
+                              if (!data.targetCompletionDate || !data.actualCompletionDate) return false;
+                              return new Date(data.actualCompletionDate) <= new Date(data.targetCompletionDate);
+                            }).length}
+                          </span>
+                          <span className="text-sm text-green-600 dark:text-green-400">
+                            {completedObjectives.filter(obj => {
+                              const data = getObjectiveData(obj.data);
+                              return data.targetCompletionDate && data.actualCompletionDate;
+                            }).length > 0 ? 
+                              `${Math.round((completedObjectives.filter(obj => {
+                                const data = getObjectiveData(obj.data);
+                                if (!data.targetCompletionDate || !data.actualCompletionDate) return false;
+                                return new Date(data.actualCompletionDate) <= new Date(data.targetCompletionDate);
+                              }).length / completedObjectives.filter(obj => {
+                                const data = getObjectiveData(obj.data);
+                                return data.targetCompletionDate && data.actualCompletionDate;
+                              }).length) * 100)}%` : 
+                              '0%'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-md border border-blue-100 dark:border-blue-900">
+                        <h3 className="text-sm font-medium text-blue-700 dark:text-blue-400 mb-1">Avg. Completion Time</h3>
+                        <div className="flex items-end justify-between">
+                          <span className="text-2xl font-bold text-blue-700 dark:text-blue-400">
+                            {completedObjectives.filter(obj => {
+                              const data = getObjectiveData(obj.data);
+                              return data.startDate && data.actualCompletionDate;
+                            }).length > 0 ? 
+                              Math.round(completedObjectives.filter(obj => {
+                                const data = getObjectiveData(obj.data);
+                                return data.startDate && data.actualCompletionDate;
+                              }).reduce((acc, obj) => {
+                                const data = getObjectiveData(obj.data);
+                                const start = new Date(data.startDate!);
+                                const end = new Date(data.actualCompletionDate!);
+                                return acc + (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+                              }, 0) / completedObjectives.filter(obj => {
+                                const data = getObjectiveData(obj.data);
+                                return data.startDate && data.actualCompletionDate;
+                              }).length) : 
+                              0}
+                          </span>
+                          <span className="text-sm text-blue-600 dark:text-blue-400">days</span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-md border border-purple-100 dark:border-purple-900">
+                        <h3 className="text-sm font-medium text-purple-700 dark:text-purple-400 mb-1">From Risks</h3>
+                        <div className="flex items-end justify-between">
+                          <span className="text-2xl font-bold text-purple-700 dark:text-purple-400">
+                            {completedObjectives.filter(obj => {
+                              const data = getObjectiveData(obj.data);
+                              return data.risk_id;
+                            }).length}
+                          </span>
+                          <span className="text-sm text-purple-600 dark:text-purple-400">
+                            {completedObjectives.length > 0 ? 
+                              `${Math.round((completedObjectives.filter(obj => {
+                                const data = getObjectiveData(obj.data);
+                                return data.risk_id;
+                              }).length / completedObjectives.length) * 100)}%` : 
+                              '0%'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             )}
           </TabsContent>

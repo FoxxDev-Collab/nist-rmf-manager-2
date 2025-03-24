@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { 
   ArrowLeft, 
   Calendar as CalendarIcon, 
@@ -26,9 +28,13 @@ import {
   Edit,
   Save,
   Plus,
+  Trash2,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 // Enhanced objective data model with project management fields
 interface EnhancedSecurityObjectiveData extends SecurityObjectiveData {
@@ -63,6 +69,12 @@ export default function ObjectiveDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [milestones, setMilestones] = useState<Array<{
+    id: string;
+    title: string;
+    dueDate: string;
+    completed: boolean;
+  }>>([]);
   
   // Form state for edit mode
   const [formData, setFormData] = useState<{
@@ -71,6 +83,14 @@ export default function ObjectiveDetailsPage() {
     status: string;
     priority: string;
     progress: number;
+    startDate?: string;
+    targetCompletionDate?: string;
+    actualCompletionDate?: string;
+    budget?: {
+      allocated: number;
+      spent: number;
+      currency: string;
+    };
   }>({
     title: '',
     description: '',
@@ -87,13 +107,22 @@ export default function ObjectiveDetailsPage() {
         const data = await apiService.objectives.getById(objectiveId);
         setObjective(data);
         
+        const objectiveData = getObjectiveData(data.data);
+        
+        // Initialize milestones state
+        setMilestones(objectiveData.milestones || []);
+        
         // Initialize form data
         setFormData({
           title: data.title || '',
           description: data.description || '',
-          status: getObjectiveData(data.data).status || 'Planning',
-          priority: String(getObjectiveData(data.data).priority || 3),
-          progress: getObjectiveData(data.data).progress || 0
+          status: objectiveData.status || 'Planning',
+          priority: String(objectiveData.priority || 3),
+          progress: objectiveData.progress || 0,
+          startDate: objectiveData.startDate,
+          targetCompletionDate: objectiveData.targetCompletionDate,
+          actualCompletionDate: objectiveData.actualCompletionDate,
+          budget: objectiveData.budget
         });
       } catch (err) {
         console.error('Error fetching objective details:', err);
@@ -170,6 +199,31 @@ export default function ObjectiveDetailsPage() {
     });
   };
   
+  const handleAddMilestone = () => {
+    // Generate a random ID safely (works in both newer and older browsers)
+    const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
+      ? crypto.randomUUID() 
+      : Math.random().toString(36).substring(2);
+      
+    const newMilestone = {
+      id: newId,
+      title: '',
+      dueDate: '',
+      completed: false
+    };
+    setMilestones([...milestones, newMilestone]);
+  };
+
+  const handleRemoveMilestone = (id: string) => {
+    setMilestones(milestones.filter(milestone => milestone.id !== id));
+  };
+
+  const handleUpdateMilestone = (id: string, field: string, value: string | boolean) => {
+    setMilestones(milestones.map(milestone => 
+      milestone.id === id ? { ...milestone, [field]: value } : milestone
+    ));
+  };
+  
   const handleSave = async () => {
     if (!objective) return;
     
@@ -184,18 +238,18 @@ export default function ObjectiveDetailsPage() {
         status: formData.status,
         priority: parseInt(formData.priority),
         progress: formData.progress,
-        // Preserve other fields from the original data
+        // Preserve and update fields
         risk_notes: objectiveData.risk_notes,
-        startDate: objectiveData.startDate,
-        targetCompletionDate: objectiveData.targetCompletionDate,
-        actualCompletionDate: objectiveData.actualCompletionDate,
-        budget: objectiveData.budget,
-        milestones: objectiveData.milestones,
+        startDate: formData.startDate,
+        targetCompletionDate: formData.targetCompletionDate,
+        actualCompletionDate: formData.actualCompletionDate,
+        budget: formData.budget || { allocated: 0, spent: 0, currency: 'USD' },
+        milestones: milestones,
         assignees: objectiveData.assignees,
         risk_id: objectiveData.risk_id
       };
       
-      // Update the objective using the new update method
+      // Update the objective using the update method
       const updated = await apiService.objectives.update(objectiveId, {
         title: formData.title,
         description: formData.description || '',
@@ -224,6 +278,26 @@ export default function ObjectiveDetailsPage() {
       });
     }
     setEditMode(false);
+  };
+  
+  const handleDateChange = (field: string, date: Date | undefined) => {
+    setFormData({
+      ...formData,
+      [field]: date ? date.toISOString() : undefined
+    });
+  };
+
+  const handleBudgetChange = (field: string, value: string) => {
+    // Ensure budget object exists
+    const currentBudget = formData.budget || { allocated: 0, spent: 0, currency: 'USD' };
+    
+    setFormData({
+      ...formData,
+      budget: {
+        ...currentBudget,
+        [field]: field === 'allocated' || field === 'spent' ? parseFloat(value) || 0 : value
+      }
+    });
   };
   
   if (loading) {
@@ -443,43 +517,185 @@ export default function ObjectiveDetailsPage() {
                 <CardTitle>Timeline</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <h3 className="text-sm font-medium mb-1">Start Date</h3>
-                  <p className="flex items-center">
-                    <CalendarIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                    {objectiveData.startDate ? (
-                      format(new Date(objectiveData.startDate), 'PPP')
-                    ) : (
-                      'Not set'
+                {editMode ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="startDate">Start Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="startDate"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.startDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.startDate ? (
+                              format(new Date(formData.startDate), 'PPP')
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.startDate ? new Date(formData.startDate) : undefined}
+                            onSelect={(date) => handleDateChange('startDate', date)}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="targetCompletionDate">Target Completion Date</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            id="targetCompletionDate"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !formData.targetCompletionDate && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {formData.targetCompletionDate ? (
+                              format(new Date(formData.targetCompletionDate), 'PPP')
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={formData.targetCompletionDate ? new Date(formData.targetCompletionDate) : undefined}
+                            onSelect={(date) => handleDateChange('targetCompletionDate', date)}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                    
+                    {formData.status === 'Completed' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="actualCompletionDate">Actual Completion Date</Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              id="actualCompletionDate"
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left font-normal",
+                                !formData.actualCompletionDate && "text-muted-foreground"
+                              )}
+                            >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {formData.actualCompletionDate ? (
+                                format(new Date(formData.actualCompletionDate), 'PPP')
+                              ) : (
+                                <span>Pick a date</span>
+                              )}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar
+                              mode="single"
+                              selected={formData.actualCompletionDate ? new Date(formData.actualCompletionDate) : undefined}
+                              onSelect={(date) => handleDateChange('actualCompletionDate', date)}
+                              initialFocus
+                            />
+                          </PopoverContent>
+                        </Popover>
+                      </div>
                     )}
-                  </p>
-                </div>
-                
-                <div>
-                  <h3 className="text-sm font-medium mb-1">Target Completion</h3>
-                  <p className="flex items-center">
-                    <CalendarIcon className="h-4 w-4 mr-1 text-muted-foreground" />
-                    {objectiveData.targetCompletionDate ? (
-                      format(new Date(objectiveData.targetCompletionDate), 'PPP')
-                    ) : (
-                      'Not set'
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="budget-allocated">Budget</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="budget-allocated"
+                          type="number"
+                          placeholder="Allocated amount"
+                          value={formData.budget?.allocated || ''}
+                          onChange={(e) => handleBudgetChange('allocated', e.target.value)}
+                          className="flex-1"
+                        />
+                        <Select 
+                          value={formData.budget?.currency || 'USD'} 
+                          onValueChange={(value) => handleBudgetChange('currency', value)}
+                        >
+                          <SelectTrigger className="w-24">
+                            <SelectValue placeholder="Currency" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="USD">USD</SelectItem>
+                            <SelectItem value="EUR">EUR</SelectItem>
+                            <SelectItem value="GBP">GBP</SelectItem>
+                            <SelectItem value="JPY">JPY</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    
+                    {(formData.budget?.allocated ?? 0) > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="budget-spent">Budget Spent</Label>
+                        <Input
+                          id="budget-spent"
+                          type="number"
+                          placeholder="Spent amount"
+                          value={formData.budget?.spent || ''}
+                          onChange={(e) => handleBudgetChange('spent', e.target.value)}
+                        />
+                      </div>
                     )}
-                  </p>
-                </div>
-                
-                {objectiveData.budget && (
-                  <div>
-                    <h3 className="text-sm font-medium mb-1">Budget</h3>
-                    <p className="flex items-center">
-                      <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
-                      {objectiveData.budget.allocated.toLocaleString()} {objectiveData.budget.currency}
-                      {objectiveData.budget.spent > 0 && (
-                        <span className="text-muted-foreground ml-1">
-                          ({objectiveData.budget.spent.toLocaleString()} spent)
-                        </span>
-                      )}
-                    </p>
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Start Date</h3>
+                      <p className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-1 text-muted-foreground" />
+                        {objectiveData.startDate ? (
+                          format(new Date(objectiveData.startDate), 'PPP')
+                        ) : (
+                          'Not set'
+                        )}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-medium mb-1">Target Completion</h3>
+                      <p className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-1 text-muted-foreground" />
+                        {objectiveData.targetCompletionDate ? (
+                          format(new Date(objectiveData.targetCompletionDate), 'PPP')
+                        ) : (
+                          'Not set'
+                        )}
+                      </p>
+                    </div>
+                    
+                    {objectiveData.budget && (
+                      <div>
+                        <h3 className="text-sm font-medium mb-1">Budget</h3>
+                        <p className="flex items-center">
+                          <DollarSign className="h-4 w-4 mr-1 text-muted-foreground" />
+                          {objectiveData.budget.allocated.toLocaleString()} {objectiveData.budget.currency}
+                          {objectiveData.budget.spent > 0 && (
+                            <span className="text-muted-foreground ml-1">
+                              ({objectiveData.budget.spent.toLocaleString()} spent)
+                            </span>
+                          )}
+                        </p>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
@@ -501,19 +717,29 @@ export default function ObjectiveDetailsPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle>Project Milestones</CardTitle>
-              {!editMode && (
-                <Button variant="outline" size="sm" className="h-8">
+              {editMode && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-8"
+                  onClick={handleAddMilestone}
+                >
                   <Plus className="h-3.5 w-3.5 mr-1" />
                   Add Milestone
                 </Button>
               )}
             </CardHeader>
             <CardContent>
-              {!objectiveData.milestones || objectiveData.milestones.length === 0 ? (
+              {!milestones.length ? (
                 <div className="text-center py-6 border-2 border-dashed rounded-lg">
                   <p className="text-muted-foreground">No milestones defined yet</p>
-                  {!editMode && (
-                    <Button variant="link" size="sm" className="mt-2">
+                  {editMode && (
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="mt-2"
+                      onClick={handleAddMilestone}
+                    >
                       <Plus className="h-3.5 w-3.5 mr-1" />
                       Add First Milestone
                     </Button>
@@ -521,30 +747,100 @@ export default function ObjectiveDetailsPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {objectiveData.milestones.map((milestone) => (
+                  {milestones.map((milestone) => (
                     <div 
                       key={milestone.id} 
-                      className="p-4 border rounded-md flex items-start justify-between"
+                      className="p-4 border rounded-md flex items-start justify-between dark:border-border"
                     >
-                      <div className="space-y-1">
-                        <h3 className="font-medium">{milestone.title}</h3>
-                        {milestone.dueDate && (
-                          <p className="text-sm text-muted-foreground flex items-center">
-                            <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                            Due: {format(new Date(milestone.dueDate), 'PPP')}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Badge 
-                          variant={milestone.completed ? "default" : "outline"}
-                          className={milestone.completed ? "bg-green-500" : ""}
-                        >
-                          {milestone.completed ? "Completed" : "Pending"}
-                        </Badge>
-                        {!editMode && (
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <Edit className="h-4 w-4" />
+                      {editMode ? (
+                        <div className="flex-1 space-y-3">
+                          <Input
+                            placeholder="Milestone title"
+                            value={milestone.title}
+                            onChange={(e) => handleUpdateMilestone(milestone.id, 'title', e.target.value)}
+                            className="w-full"
+                          />
+                          <div className="flex gap-3 items-center">
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className={cn(
+                                    "justify-start text-left font-normal",
+                                    !milestone.dueDate && "text-muted-foreground"
+                                  )}
+                                >
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  {milestone.dueDate ? (
+                                    format(new Date(milestone.dueDate), 'PPP')
+                                  ) : (
+                                    <span>Select due date</span>
+                                  )}
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                  mode="single"
+                                  selected={milestone.dueDate ? new Date(milestone.dueDate) : undefined}
+                                  onSelect={(date) => 
+                                    handleUpdateMilestone(
+                                      milestone.id, 
+                                      'dueDate', 
+                                      date ? date.toISOString() : ''
+                                    )
+                                  }
+                                  initialFocus
+                                />
+                              </PopoverContent>
+                            </Popover>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1"
+                              onClick={() => handleUpdateMilestone(milestone.id, 'completed', !milestone.completed)}
+                            >
+                              {milestone.completed ? (
+                                <>
+                                  <CheckSquare className="h-4 w-4" />
+                                  <span>Completed</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Square className="h-4 w-4" />
+                                  <span>Mark as completed</span>
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-1 flex-1">
+                          <h3 className="font-medium">{milestone.title}</h3>
+                          {milestone.dueDate && (
+                            <p className="text-sm text-muted-foreground flex items-center">
+                              <CalendarIcon className="h-3.5 w-3.5 mr-1" />
+                              Due: {format(new Date(milestone.dueDate), 'PPP')}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        {!editMode ? (
+                          <Badge 
+                            variant={milestone.completed ? "default" : "outline"}
+                            className={milestone.completed ? "bg-green-500" : ""}
+                          >
+                            {milestone.completed ? "Completed" : "Pending"}
+                          </Badge>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleRemoveMilestone(milestone.id)}
+                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:hover:text-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
                           </Button>
                         )}
                       </div>
