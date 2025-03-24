@@ -28,11 +28,20 @@ export default function Header() {
           </Link>
         </div>
         
-        <nav className="flex items-center space-x-4">
+        <nav className="hidden md:flex items-center space-x-4">
           <Link 
             href="/" 
             className={`text-sm font-medium transition-colors hover:text-primary ${
               pathname === '/' ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            Home
+          </Link>
+          
+          <Link 
+            href="/dashboard" 
+            className={`text-sm font-medium transition-colors hover:text-primary ${
+              pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
             Dashboard

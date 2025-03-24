@@ -29,9 +29,14 @@ const Navigation: FC<NavigationProps> = ({ isOpen, toggle }) => {
 
   const links = [
     {
+      href: '/',
+      label: 'Home',
+      icon: <Home className="mr-2 h-4 w-4" />
+    },
+    {
       href: '/dashboard',
       label: 'Dashboard',
-      icon: <Home className="mr-2 h-4 w-4" />
+      icon: <BarChart className="mr-2 h-4 w-4" />
     },
     {
       href: '/clients',
