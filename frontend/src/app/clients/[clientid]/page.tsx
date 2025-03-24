@@ -358,10 +358,6 @@ export default function ClientDetailPage() {
                   </Button>
                   <button id="client-submit-button" type="submit" className="hidden" />
                 </form>
-                <Button onClick={handleCreateAssessment}>
-                  <PlusCircle className="h-4 w-4 mr-2" />
-                  New Assessment
-                </Button>
               </div>
             </CardHeader>
             <CardContent>
