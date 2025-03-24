@@ -44,7 +44,7 @@ export default function Header() {
               pathname === '/dashboard' ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
-            Dashboard
+            Assessment Man.
           </Link>
           
           <Link 
@@ -53,7 +53,7 @@ export default function Header() {
               pathname.startsWith('/clients') ? 'text-primary' : 'text-muted-foreground'
             }`}
           >
-            Clients
+            Client Man.
           </Link>
           
           {currentAssessmentId && (
@@ -94,10 +94,12 @@ export default function Header() {
           <ThemeToggle />
           
           <Link 
-            href="/profile" 
-            className="text-sm font-medium text-muted-foreground hover:text-primary"
+            href="/settings" 
+            className={`text-sm font-medium transition-colors hover:text-primary ${
+              pathname === '/settings' ? 'text-primary' : 'text-muted-foreground'
+            }`}
           >
-            Profile
+            Settings
           </Link>
           
           <Link 

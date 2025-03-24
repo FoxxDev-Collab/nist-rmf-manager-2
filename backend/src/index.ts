@@ -73,6 +73,7 @@ interface Risk {
 
 interface SecurityObjective {
   id?: string
+  client_id?: string
   title: string;
   description: string;
   status: 'New' | 'In Progress' | 'Completed' | 'Cancelled';
@@ -426,6 +427,10 @@ const app = new Elysia()
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
     return objectiveService.getAll()
   })
+  .get('/api/clients/:id/security-objectives', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    return objectiveService.getByClientId(params.id)
+  })
   .get('/api/security-objectives/:id', async ({ params, headers, auth }) => {
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
     const objective = objectiveService.getById(params.id)
@@ -438,9 +443,15 @@ const app = new Elysia()
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
+    // Ensure client_id is provided
+    if (!objective.client_id) {
+      throw new Error('client_id is required to create an objective')
+    }
+    
     // Convert objective from API schema to database schema
     const objectiveData = {
       id,
+      client_id: objective.client_id,
       title: objective.title,
       description: objective.description || '',
       data: objective.data || {
@@ -466,6 +477,7 @@ const app = new Elysia()
     
     // Convert objective from API schema to database schema
     const objectiveData = {
+      client_id: objective.client_id,
       title: objective.title,
       description: objective.description || '',
       data: objective.data || {
@@ -615,6 +627,65 @@ const app = new Elysia()
       client: clientService.getById(clientId),
       message: `Client "${assessmentData.organization}" created and linked to assessment`
     }
+  })
+  // Migration endpoint to fix client_id associations for objectives
+  .post('/api/migrate/objectives', async ({ headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    
+    // Get all objectives without client_id
+    const allObjectives = objectiveService.getAll() as any[];
+    const objectivesWithoutClient = allObjectives.filter(obj => !obj.client_id);
+    
+    if (objectivesWithoutClient.length === 0) {
+      return { message: "No objectives found needing migration", count: 0 };
+    }
+    
+    // Get all assessments with client_id
+    const assessmentsWithClient = (assessmentService.getAll() as any[]).filter(a => a.client_id);
+    
+    if (assessmentsWithClient.length === 0) {
+      return { message: "No assessments with client_id found for migration", count: 0 };
+    }
+    
+    // Create default client if needed for orphaned objectives
+    let defaultClientId = null;
+    const clients = clientService.getAll() as any[];
+    if (clients.length > 0) {
+      defaultClientId = clients[0].id;
+    } else {
+      const clientId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const defaultClient = {
+        id: clientId,
+        name: "Default Client",
+        description: "Default client created during migration",
+        created_at: now,
+        updated_at: now
+      };
+      clientService.create(defaultClient);
+      defaultClientId = clientId;
+    }
+    
+    // Update each objective
+    let count = 0;
+    for (const objective of objectivesWithoutClient) {
+      // Try to find a client through risk -> assessment -> client chain
+      let clientId = defaultClientId;
+      
+      // Prefer the first assessment's client
+      if (assessmentsWithClient.length > 0) {
+        clientId = assessmentsWithClient[0].client_id;
+      }
+      
+      // Update the objective with the client_id
+      objectiveService.update(objective.id, { client_id: clientId });
+      count++;
+    }
+    
+    return { 
+      message: `Successfully migrated ${count} objectives with client associations`,
+      count: count
+    };
   })
   .listen(3001)
 

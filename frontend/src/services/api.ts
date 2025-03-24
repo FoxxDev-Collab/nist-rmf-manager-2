@@ -120,6 +120,7 @@ export interface Risk {
 
 export interface SecurityObjective {
   id?: string
+  client_id?: string
   title: string
   description?: string
   data: SecurityObjectiveData
@@ -260,6 +261,11 @@ export const objectives = {
     return response.data
   },
 
+  getByClientId: async (clientId: string): Promise<SecurityObjective[]> => {
+    const response = await api.get(`/clients/${clientId}/security-objectives`)
+    return response.data
+  },
+
   getById: async (id: string): Promise<SecurityObjective> => {
     const response = await api.get(`/security-objectives/${id}`)
     return response.data
@@ -310,7 +316,14 @@ const apiService = {
   assessments,
   risks,
   objectives,
-  initiatives
+  initiatives,
+  // Migration utilities
+  migrations: {
+    fixObjectiveClientIds: async (): Promise<{message: string, count: number}> => {
+      const response = await api.post('/migrate/objectives');
+      return response.data;
+    }
+  }
 }
 
 export default apiService 

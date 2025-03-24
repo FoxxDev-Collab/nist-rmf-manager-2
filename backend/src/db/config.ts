@@ -108,6 +108,7 @@ export function initializeDatabases() {
   objectivesDb.run(`
     CREATE TABLE IF NOT EXISTS security_objectives (
       id TEXT PRIMARY KEY,
+      client_id TEXT,
       title TEXT NOT NULL,
       description TEXT,
       data TEXT,
@@ -116,10 +117,24 @@ export function initializeDatabases() {
     )
   `)
 
+  // Add client_id column if it doesn't exist yet (for migration purposes)
+  try {
+    objectivesDb.run(`ALTER TABLE security_objectives ADD COLUMN client_id TEXT;`)
+    console.log('Added client_id column to security_objectives table')
+  } catch (error) {
+    // Column might already exist, which is fine
+    console.log('client_id column may already exist in security_objectives table')
+  }
+
   // Create index for faster objective queries
   objectivesDb.run(`
     CREATE INDEX IF NOT EXISTS idx_objectives_created_at 
     ON security_objectives(created_at DESC)
+  `)
+  
+  objectivesDb.run(`
+    CREATE INDEX IF NOT EXISTS idx_objectives_client_id 
+    ON security_objectives(client_id)
   `)
 
   // Initiatives table (in objectives database since they're related)

@@ -91,9 +91,21 @@ export default function ObjectivesPage() {
     const fetchData = async () => {
       try {
         setLoading(true);
+        
+        // First, get the assessment to determine client_id
+        const assessment = await apiService.assessments.getById(assessmentId);
+        const clientId = assessment?.client_id;
+        
+        if (!clientId) {
+          console.error('Assessment has no client_id');
+          setError('This assessment is not associated with a client. Please link it to a client first.');
+          setLoading(false);
+          return;
+        }
+        
         // Fetch both objectives and risks in parallel
         const [objectivesData, risksData] = await Promise.all([
-          apiService.objectives.getAll(),
+          apiService.objectives.getByClientId(clientId),
           apiService.risks.getAll(assessmentId)
         ]);
         

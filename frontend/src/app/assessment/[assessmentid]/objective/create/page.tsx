@@ -45,6 +45,7 @@ export default function CreateObjectivePage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const assessmentId = params.assessmentid as string;
+  const [clientId, setClientId] = useState<string | null>(null);
   const riskId = searchParams.get('riskId');
 
   const [sourceRisk, setSourceRisk] = useState<Risk | null>(null);
@@ -68,43 +69,43 @@ export default function CreateObjectivePage() {
     completed: boolean;
   }>>([]);
 
-  // Fetch source risk if riskId is provided
+  // Fetch the source risk if riskId is provided
   useEffect(() => {
     const fetchSourceRisk = async () => {
-      if (!riskId) {
-        setLoading(false);
-        return;
-      }
-
       try {
-        // Risk API requires the risk ID only
-        const risk = await apiService.risks.getById(riskId);
-        setSourceRisk(risk);
+        setLoading(true);
+        const riskId = searchParams.get('riskId');
+
+        // Fetch assessment to get client_id
+        const assessment = await apiService.assessments.getById(assessmentId);
+        setClientId(assessment?.client_id || null);
         
-        // Pre-populate form fields with risk data
-        setTitle(`Security Objective: ${risk.title}`);
-        setDescription(risk.description || '');
-        
-        // Set priority based on risk score
-        const riskScore = risk.data.risk_score;
-        if (riskScore >= 15) {
-          setPriority('1'); // High
-        } else if (riskScore >= 8) {
-          setPriority('2'); // Medium
-        } else {
-          setPriority('3'); // Low
+        if (!assessment?.client_id) {
+          setError('This assessment is not associated with a client. Please link it to a client first.');
+          setLoading(false);
+          return;
         }
-        
+
+        if (riskId) {
+          const risk = await apiService.risks.getById(riskId);
+          if (risk) {
+            setSourceRisk(risk);
+            // Pre-fill form fields with risk details
+            setTitle(`Mitigate: ${risk.title}`);
+            setDescription(risk.description || '');
+            setPriority(risk.data.risk_score > 12 ? '1' : risk.data.risk_score > 6 ? '2' : '3');
+          }
+        }
       } catch (err) {
         console.error('Error fetching risk:', err);
-        setError('Failed to load risk details. Please try again later.');
+        setError('Failed to load risk details. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
     fetchSourceRisk();
-  }, [riskId]);
+  }, [assessmentId, searchParams]);
 
   const handleAddMilestone = () => {
     // Generate a random ID safely (works in both newer and older browsers)
@@ -137,6 +138,11 @@ export default function CreateObjectivePage() {
       return;
     }
 
+    if (!clientId) {
+      setError('Cannot create objective: No client associated with this assessment');
+      return;
+    }
+
     setSubmitting(true);
     setError(null);
 
@@ -165,6 +171,7 @@ export default function CreateObjectivePage() {
 
       // Create the objective
       await apiService.objectives.create({
+        client_id: clientId,
         title: title,
         description: description,
         data: {

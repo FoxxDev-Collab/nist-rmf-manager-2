@@ -287,24 +287,32 @@ export const objectiveService = {
     return objectivesDb.query('SELECT * FROM security_objectives ORDER BY created_at DESC').all()
   },
 
+  getByClientId: (clientId: string) => {
+    return objectivesDb.query('SELECT * FROM security_objectives WHERE client_id = ? ORDER BY created_at DESC').all(clientId)
+  },
+
   getById: (id: string) => {
     return objectivesDb.query('SELECT * FROM security_objectives WHERE id = ?').get(id)
   },
 
-  create: (objective: { id: string; title: string; description?: string; data: any; created_at: string; updated_at: string }) => {
-    const { id, title, description, data, created_at, updated_at } = objective
+  create: (objective: { id: string; client_id: string; title: string; description?: string; data: any; created_at: string; updated_at: string }) => {
+    const { id, client_id, title, description, data, created_at, updated_at } = objective
     objectivesDb.run(
-      'INSERT INTO security_objectives (id, title, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, title, description || null, JSON.stringify(data), created_at, updated_at]
+      'INSERT INTO security_objectives (id, client_id, title, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, client_id, title, description || null, JSON.stringify(data), created_at, updated_at]
     )
     return objective
   },
 
-  update: (id: string, objective: { title?: string; description?: string; data?: any }) => {
-    const { title, description, data } = objective
+  update: (id: string, objective: { client_id?: string; title?: string; description?: string; data?: any }) => {
+    const { client_id, title, description, data } = objective
     const updates: string[] = []
     const values: any[] = []
 
+    if (client_id) {
+      updates.push('client_id = ?')
+      values.push(client_id)
+    }
     if (title) {
       updates.push('title = ?')
       values.push(title)

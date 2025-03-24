@@ -251,6 +251,7 @@ export default function ObjectiveDetailsPage() {
       
       // Update the objective using the update method
       const updated = await apiService.objectives.update(objectiveId, {
+        client_id: objective.client_id,
         title: formData.title,
         description: formData.description || '',
         data: updatedData
