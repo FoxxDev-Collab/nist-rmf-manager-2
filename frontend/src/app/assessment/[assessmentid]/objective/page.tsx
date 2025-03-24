@@ -241,6 +241,15 @@ export default function ObjectivesPage() {
         </Alert>
       )}
 
+      {riskQueue.length > 0 && (
+        <Alert className="bg-amber-50 text-amber-800 border border-amber-200 mb-4">
+          <AlertCircle className="h-4 w-4 text-amber-500" />
+          <AlertDescription>
+            <strong>{riskQueue.length} risk{riskQueue.length > 1 ? 's' : ''}</strong> in the queue ready to be converted to security objectives.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="relative flex-1 mb-4">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
@@ -285,17 +294,27 @@ export default function ObjectivesPage() {
                     ` ${riskQueue.length} risk${riskQueue.length > 1 ? 's' : ''} need attention.` : 
                     ' All risks have been addressed.'}
                 </CardDescription>
+                
+                {riskQueue.length > 0 && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    Converting risks to objectives allows you to track mitigation efforts, assign resources, and monitor progress.
+                    Each objective created from a risk will maintain a reference to the original risk for traceability.
+                  </p>
+                )}
               </CardHeader>
               <CardContent>
                 {riskQueue.length === 0 ? (
                   <div className="text-center py-8 border-2 border-dashed rounded-lg">
                     <p className="text-muted-foreground">No risks in the queue</p>
+                    <p className="text-sm text-muted-foreground mt-2 mb-3">
+                      All identified risks have been addressed or there are no risks requiring attention.
+                    </p>
                     <Button 
-                      variant="link" 
+                      variant="outline"
                       onClick={() => router.push(`/assessment/${assessmentId}/risk`)}
-                      className="mt-2"
+                      className="mt-1"
                     >
-                      Go to Risk Management
+                      Manage Risks
                     </Button>
                   </div>
                 ) : (
@@ -320,10 +339,10 @@ export default function ObjectivesPage() {
                               <Button 
                                 onClick={() => handleCreateObjective(risk)}
                                 size="sm"
-                                className="gap-1"
+                                className="bg-blue-600 hover:bg-blue-700 text-white gap-1"
                               >
                                 <Plus className="h-4 w-4" />
-                                Create Objective
+                                Convert to Objective
                               </Button>
                               <AccordionTrigger className="h-9 w-9 p-0 m-0 justify-center" />
                             </div>

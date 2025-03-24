@@ -59,7 +59,6 @@ export default function RisksPage() {
   // State for the edit modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentRisk, setCurrentRisk] = useState<Risk | null>(null);
-  const [promotingRisk, setPromotingRisk] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   // Fetch risks and assessments
@@ -202,53 +201,6 @@ export default function RisksPage() {
     return 100 - ((baseScore / 25) * 100);
   };
 
-  // Handle promoting a risk to an objective
-  const handlePromoteToObjective = async (risk: Risk) => {
-    try {
-      if (risk.id) {
-        setPromotingRisk(risk.id);
-      }
-      setError(null);
-      setSuccessMessage(null);
-      
-      // Convert risk priority based on risk score
-      const getPriorityFromRiskScore = (score: number) => {
-        if (score >= 15) return 1; // High priority
-        if (score >= 10) return 2; // Medium priority
-        return 3; // Low priority
-      };
-      
-      // Create a new security objective based on the risk
-      const newObjective = {
-        title: `Risk mitigation: ${risk.title}`,
-        description: `This objective addresses the risk: ${risk.description}`,
-        data: {
-          description: `Objective derived from risk assessment with impact ${risk.data.impact}/5 and likelihood ${risk.data.likelihood}/5.`,
-          status: 'New',
-          priority: getPriorityFromRiskScore(risk.data.risk_score),
-          risk_notes: risk.data.notes
-        }
-      };
-      
-      // Call the API to create a new security objective
-      await apiService.objectives.create(newObjective);
-      
-      // Show success message
-      setSuccessMessage(`Risk "${risk.title}" has been successfully promoted to an objective.`);
-      
-      // Auto-hide success message after 5 seconds
-      setTimeout(() => {
-        setSuccessMessage(null);
-      }, 5000);
-      
-    } catch (err) {
-      console.error('Error promoting risk to objective:', err);
-      setError('Failed to promote risk to objective. Please try again.');
-    } finally {
-      setPromotingRisk(null);
-    }
-  };
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -298,6 +250,21 @@ export default function RisksPage() {
           </AlertDescription>
         </Alert>
       )}
+
+      <Alert className="bg-blue-50 border-blue-200 mb-4">
+        <AlertCircle className="h-4 w-4 text-blue-500" />
+        <AlertDescription className="text-blue-700">
+          Need to convert risks to security objectives? Visit the{' '}
+          <Button 
+            variant="link" 
+            className="h-auto p-0 text-blue-700 font-bold underline"
+            onClick={() => router.push(`/assessment/${assessmentId}/objective`)}
+          >
+            Objectives page
+          </Button>
+          {' '}to manage risks in the queue and create detailed objectives.
+        </AlertDescription>
+      </Alert>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
@@ -387,16 +354,6 @@ export default function RisksPage() {
                         >
                           <Edit3 className="h-4 w-4 mr-1" />
                           Edit
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handlePromoteToObjective(risk)}
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                          disabled={promotingRisk === risk.id}
-                        >
-                          <ArrowUpCircle className="h-4 w-4 mr-1" />
-                          {promotingRisk === risk.id ? 'Promoting...' : 'Promote'}
                         </Button>
                         <Button 
                           variant="outline" 
