@@ -7,12 +7,16 @@ import { Client, Assessment } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { Pencil, ArrowLeft, Building, FileText, User, Phone, Mail, Info, Upload, PlusCircle, Trash } from 'lucide-react'
+import { Pencil, ArrowLeft, FileText, Upload, PlusCircle, Trash } from 'lucide-react'
 import { toast } from 'sonner'
-import { format } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import MainLayout from '@/components/layout/MainLayout'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ClientInformation } from '@/components/clients/ClientInformation'
+import { ClientAssessments } from '@/components/clients/ClientAssessments'
+import { ClientAssessmentMetrics } from '@/components/clients/ClientAssessmentMetrics'
+import { ClientFileManager } from '@/components/clients/ClientFileManager'
 
 export default function ClientDetailPage() {
   const params = useParams()
@@ -248,178 +252,33 @@ export default function ClientDetailPage() {
 
         <Separator />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Client Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <Building className="h-5 w-5 mr-2" />
-                Client Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {client.description && (
-                <div>
-                  <h3 className="text-sm font-medium flex items-center">
-                    <Info className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Description
-                  </h3>
-                  <p className="text-sm mt-1">{client.description}</p>
-                </div>
-              )}
-              
-              {client.contact_name && (
-                <div>
-                  <h3 className="text-sm font-medium flex items-center">
-                    <User className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Contact Name
-                  </h3>
-                  <p className="text-sm mt-1">{client.contact_name}</p>
-                </div>
-              )}
-              
-              {client.contact_email && (
-                <div>
-                  <h3 className="text-sm font-medium flex items-center">
-                    <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Email
-                  </h3>
-                  <p className="text-sm mt-1">
-                    <a href={`mailto:${client.contact_email}`} className="text-blue-600 hover:underline">
-                      {client.contact_email}
-                    </a>
-                  </p>
-                </div>
-              )}
-              
-              {client.contact_phone && (
-                <div>
-                  <h3 className="text-sm font-medium flex items-center">
-                    <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                    Phone
-                  </h3>
-                  <p className="text-sm mt-1">{client.contact_phone}</p>
-                </div>
-              )}
-              
-              {client.size && (
-                <div>
-                  <h3 className="text-sm font-medium">Organization Size</h3>
-                  <p className="text-sm mt-1">{client.size}</p>
-                </div>
-              )}
-              
-              {client.notes && (
-                <div>
-                  <h3 className="text-sm font-medium">Notes</h3>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{client.notes}</p>
-                </div>
-              )}
-              
-              {!client.contact_name && !client.contact_email && !client.contact_phone && !client.notes && (
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground">This client needs more information.</p>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleEdit}
-                    className="mt-4"
-                  >
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Add Client Details
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="assessments">Assessments</TabsTrigger>
+            <TabsTrigger value="files">Files</TabsTrigger>
+          </TabsList>
 
-          {/* Assessments Summary */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center">
-                <FileText className="h-5 w-5 mr-2" />
-                Assessments
-              </CardTitle>
-              <div className="flex space-x-2">
-                <form onSubmit={handleFileImport}>
-                  <input
-                    type="file"
-                    id="client-file-input"
-                    className="hidden"
-                    accept=".json"
-                    onChange={() => document.getElementById('client-submit-button')?.click()}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => document.getElementById('client-file-input')?.click()}
-                    disabled={importing}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {importing ? 'Importing...' : 'Import Assessment'}
-                  </Button>
-                  <button id="client-submit-button" type="submit" className="hidden" />
-                </form>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {assessments.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-muted-foreground">No assessments found for this client.</p>
-                  <div className="flex justify-center gap-2 mt-4">
-                    <Button 
-                      variant="outline" 
-                      onClick={() => document.getElementById('client-file-input')?.click()}
-                    >
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import Assessment
-                    </Button>
-                    <Button onClick={handleCreateAssessment}>
-                      <PlusCircle className="h-4 w-4 mr-2" />
-                      Create Assessment
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {assessments.map((assessment) => (
-                    <Card key={assessment.id} className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                      onClick={() => router.push(`/assessment/${assessment.id}`)}>
-                      <div className="flex justify-between items-center">
-                        <div>
-                          <h3 className="font-semibold">{assessment.title}</h3>
-                          <div className="flex gap-2 mt-1">
-                            <Badge variant={assessment.data.status === 'Completed' ? 'default' : 'outline'}>
-                              {assessment.data.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {assessment.data.date ? format(new Date(assessment.data.date), 'MMM d, yyyy') : 'No date'}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={
-                            (assessment.data.score || 0) < 50 ? 'destructive' : 
-                            (assessment.data.score || 0) < 70 ? 'outline' : 'default'
-                          }>
-                            Score: {assessment.data.score || 0}
-                          </Badge>
-                          <Button 
-                            variant="destructive" 
-                            size="sm"
-                            className="h-8"
-                            onClick={(e) => openDeleteDialog(assessment.id || '', e)}
-                          >
-                            <Trash className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="overview" className="space-y-6">
+            <ClientInformation client={client} onEdit={handleEdit} />
+            {assessments.length > 0 && <ClientAssessmentMetrics assessments={assessments} />}
+          </TabsContent>
+
+          <TabsContent value="assessments" className="space-y-6">
+            <ClientAssessments
+              assessments={assessments}
+              importing={importing}
+              onImport={handleFileImport}
+              onCreateAssessment={handleCreateAssessment}
+              onDeleteAssessment={openDeleteDialog}
+              onAssessmentClick={(id) => router.push(`/assessment/${id}`)}
+            />
+          </TabsContent>
+
+          <TabsContent value="files" className="space-y-6">
+            <ClientFileManager clientId={clientId} />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Delete confirmation dialog */}
