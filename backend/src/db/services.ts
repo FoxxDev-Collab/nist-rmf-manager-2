@@ -121,15 +121,27 @@ export const assessmentService = {
   create: (assessment: { id: string; client_id?: string; title: string; description?: string; data: any; created_at: string; updated_at: string }) => {
     const { id, client_id, title, description, data, created_at, updated_at } = assessment
     
-    // Ensure data.controls exists before storing it
-    if (data && (!data.controls || Object.keys(data.controls).length === 0)) {
-      console.warn('No controls data in assessment being saved!');
-    } else {
-      console.log(`Saving assessment with controls: ${Object.keys(data.controls).length} control families`);
+    // Validate data structure
+    let validatedData = { ...data };
+    
+    // Ensure controls exist
+    if (!validatedData.controls || typeof validatedData.controls !== 'object') {
+      console.warn('Creating assessment with empty controls object');
+      validatedData.controls = {};
     }
     
+    // Ensure all required fields exist
+    if (!validatedData.organization) validatedData.organization = 'Unknown';
+    if (!validatedData.assessor) validatedData.assessor = 'Unknown';
+    if (!validatedData.date) validatedData.date = new Date().toISOString();
+    if (!validatedData.status) validatedData.status = 'In Progress';
+    if (validatedData.score === undefined) validatedData.score = 0;
+    if (validatedData.completion === undefined) validatedData.completion = 0;
+    
+    console.log(`Saving assessment with controls: ${Object.keys(validatedData.controls).length} control families`);
+    
     // Stringify the data for storage
-    const dataJson = JSON.stringify(data);
+    const dataJson = JSON.stringify(validatedData);
     
     assessmentsDb.run(
       'INSERT INTO assessments (id, client_id, title, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -148,7 +160,7 @@ export const assessmentService = {
       }
     }
     
-    return assessment
+    return { ...assessment, data: validatedData };
   },
 
   update: (id: string, assessment: { client_id?: string; title?: string; description?: string; data?: any }) => {

@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
@@ -19,6 +19,8 @@ export default function Dashboard() {
   const [assessmentsList, setAssessmentsList] = useState<Assessment[]>([])
   const [loading, setLoading] = useState(true)
   const [importing, setImporting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [assessmentToDelete, setAssessmentToDelete] = useState<string | null>(null)
 
   useEffect(() => {
     fetchAssessments()
@@ -28,25 +30,58 @@ export default function Dashboard() {
     try {
       setLoading(true)
       const data = await assessments.getAll()
-      setAssessmentsList(data)
+      console.log('Fetched assessments:', data)
+      
+      // Validate and add defaults for assessments with missing data properties
+      const validatedData = data.map(assessment => {
+        // Ensure each assessment has a data property with required fields
+        if (!assessment.data) {
+          assessment.data = {
+            organization: 'Unknown',
+            assessor: 'Unknown',
+            date: new Date().toISOString(),
+            status: 'Unknown',
+            controls: {},
+            score: 0,
+            completion: 0
+          }
+        }
+        
+        // Ensure the controls property exists
+        if (!assessment.data.controls) {
+          assessment.data.controls = {}
+        }
+        
+        return assessment
+      })
+      
+      setAssessmentsList(validatedData)
     } catch (error) {
+      console.error('Error fetching assessments:', error)
       toast.error('Failed to load assessments')
-      console.error(error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!id) return;
+  const openDeleteDialog = (id: string) => {
+    setAssessmentToDelete(id);
+    setDeleteDialogOpen(true);
+  }
+
+  const confirmDelete = async () => {
+    if (!assessmentToDelete) return;
     
     try {
-      await assessments.delete(id);
+      await assessments.delete(assessmentToDelete);
       toast.success('Assessment deleted successfully');
       fetchAssessments();
     } catch (error) {
       toast.error('Failed to delete assessment');
       console.error(error);
+    } finally {
+      setDeleteDialogOpen(false);
+      setAssessmentToDelete(null);
     }
   };
 
@@ -121,7 +156,8 @@ export default function Dashboard() {
       try {
         await assessments.create(assessmentData)
         toast.success('Assessment imported successfully')
-        fetchAssessments()
+        await fetchAssessments()
+        console.log('Assessments after import:', assessmentsList)
         fileInput.value = ''
       } catch (error: any) {
         console.error('Import error details:', error)
@@ -160,6 +196,25 @@ export default function Dashboard() {
 
   return (
     <div className="container mx-auto py-6">
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Assessment</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this assessment? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end space-x-2 pt-4">
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight dark:text-white">Security Assessment Manager</h1>
@@ -209,7 +264,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold dark:text-white">
-              {assessmentsList.filter((a: Assessment) => a.data.status === 'Completed').length}
+              {assessmentsList.filter((a: Assessment) => a.data?.status === 'Completed').length}
             </p>
           </CardContent>
         </Card>
@@ -220,7 +275,7 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-bold dark:text-white">
-              {assessmentsList.filter((a: Assessment) => (a.data.score || 0) < 50).length}
+              {assessmentsList.filter((a: Assessment) => (a.data?.score || 0) < 50).length}
             </p>
           </CardContent>
         </Card>
@@ -254,7 +309,7 @@ export default function Dashboard() {
                         )}
                         <div className="flex items-center mt-1 space-x-2">
                           <span className="text-xs text-muted-foreground dark:text-gray-400">
-                            Organization: {assessment.data.organization}
+                            Organization: {assessment.data?.organization || 'Unknown'}
                           </span>
                           {assessment.client_id && (
                             <Button 
@@ -280,8 +335,9 @@ export default function Dashboard() {
                         </Button>
                         <Button
                           variant="destructive"
-                          onClick={() => handleDelete(assessment.id || '')}
+                          onClick={() => openDeleteDialog(assessment.id || '')}
                         >
+                          <Trash className="h-4 w-4 mr-1" />
                           Delete
                         </Button>
                       </div>

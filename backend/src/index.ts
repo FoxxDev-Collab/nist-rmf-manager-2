@@ -183,40 +183,21 @@ const app = new Elysia()
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    // Either use directly provided controls, or look for them in nested structures
-    let controlsData = assessment.controls || {}
+    const title = assessment.title || 'Untitled Assessment'
+    const description = assessment.description || ''
+    const organization = assessment.data?.organization || assessment.organization_name || 'Unknown'
     
-    if (!controlsData || Object.keys(controlsData).length === 0) {
-      // Try to find controls in the nested data structure
-      if (assessment.data?.controls) {
-        controlsData = assessment.data.controls;
-        console.log('Found controls in assessment.data.controls');
-      } else if (assessment.original_data?.controls) {
-        controlsData = assessment.original_data.controls;
-        console.log('Found controls in assessment.original_data.controls');
-      }
+    // Handle the controls data properly - only use what's provided, don't add all control families
+    let controlsData = {}
+    if (assessment.data?.controls) {
+      // Use only the controls provided in the assessment data
+      controlsData = assessment.data.controls
+    } else if (assessment.controls) {
+      // Use the controls directly provided at the root level
+      controlsData = assessment.controls
     }
+    // Don't add any additional control families that weren't in the original data
     
-    // Add some default controls data for testing if none exists
-    if (!controlsData || Object.keys(controlsData).length === 0) {
-      console.log('No controls data found in import, adding sample controls data');
-      controlsData = {
-        "NIST.800-53.AC-1": {
-          "AC-1.a": { "status": "Implemented", "notes": "Sample control data" },
-          "AC-1.b": { "status": "Planned", "notes": "This is a test" }
-        },
-        "NIST.800-53.AC-2": {
-          "AC-2.a": { "status": "Not Implemented", "notes": "Test data" }
-        }
-      };
-    } else {
-      console.log('Found controls data with keys:', Object.keys(controlsData));
-    }
-    
-    // Extract other assessment fields with fallbacks to ensure we have valid data
-    const title = assessment.title || assessment.data?.organization || assessment.organization_name || assessment.client_name || 'Untitled Assessment';
-    const description = assessment.description || `Assessment by ${assessment.data?.assessor || assessment.assessor_name || 'Unknown'} on ${assessment.data?.date || assessment.assessment_date || now}`;
-    const organization = assessment.data?.organization || assessment.organization_name || assessment.client_name || '';
     const assessor = assessment.data?.assessor || assessment.assessor_name || 'Unknown';
     const date = assessment.data?.date || assessment.assessment_date || now;
     const status = assessment.data?.status || assessment.status || 'In Progress';
