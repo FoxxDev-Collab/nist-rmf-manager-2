@@ -14,7 +14,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Info, CheckCircle, XCircle, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { toast } from 'sonner'
-import { assessments, risks } from '@/services/api'
+import { assessments, risks, clients } from '@/services/api'
 import type { Assessment } from '@/services/api'
 
 // CSS classes for the score categories
@@ -104,6 +104,7 @@ export default function AssessmentDetail({ id }: { id: string }) {
   const [riskLikelihood, setRiskLikelihood] = useState(3)
   const [promoting, setPromoting] = useState(false)
   const [activeTab, setActiveTab] = useState('all')
+  const [creatingClient, setCreatingClient] = useState(false)
 
   const loadAssessment = useCallback(async () => {
     try {
@@ -172,6 +173,49 @@ export default function AssessmentDetail({ id }: { id: string }) {
       console.error(error)
     } finally {
       setPromoting(false)
+    }
+  }
+
+  const handleCreateClient = async () => {
+    try {
+      setCreatingClient(true)
+      
+      // Check if assessment already has a client_id
+      if (assessment?.client_id) {
+        toast.error('This assessment is already linked to a client')
+        return
+      }
+      
+      // Check if organization data exists
+      const orgName = assessment?.data?.organization
+      if (!orgName) {
+        toast.error('No organization data found in the assessment')
+        return
+      }
+      
+      // Confirm with user
+      if (!window.confirm(`Create client "${orgName}" from this assessment?`)) {
+        return
+      }
+      
+      // Call API to create client
+      const result = await clients.createFromAssessment(id)
+      
+      // Update the assessment with the new client_id
+      const updatedAssessment = await assessments.getById(id)
+      setAssessment(updatedAssessment)
+      
+      toast.success(result.message || 'Client created successfully')
+      
+      // Ask if user wants to navigate to client page
+      if (window.confirm('Client created. View client details?')) {
+        router.push(`/clients/${result.client.id}`)
+      }
+    } catch (err) {
+      console.error('Error creating client:', err)
+      toast.error('Failed to create client')
+    } finally {
+      setCreatingClient(false)
     }
   }
 
@@ -470,6 +514,18 @@ export default function AssessmentDetail({ id }: { id: string }) {
               <Badge variant={getStatusColor(processedData.status)}>
                 {processedData.status}
               </Badge>
+              {assessment.client_id ? (
+                <Badge variant="outline" className="bg-green-50">Linked to Client</Badge>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCreateClient}
+                  disabled={creatingClient}
+                >
+                  {creatingClient ? 'Creating...' : 'Create Client'}
+                </Button>
+              )}
             </div>
           </div>
         </div>

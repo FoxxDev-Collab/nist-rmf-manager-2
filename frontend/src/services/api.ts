@@ -84,8 +84,23 @@ export interface InitiativeData {
   endDate?: string
 }
 
+export interface Client {
+  id?: string
+  name: string
+  description?: string
+  contact_name?: string
+  contact_email?: string
+  contact_phone?: string
+  industry?: string
+  size?: string
+  notes?: string
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Assessment {
   id?: string
+  client_id?: string
   title: string
   description?: string
   data: AssessmentData
@@ -137,6 +152,43 @@ export const auth = {
 
   isAuthenticated: (): boolean => {
     return !!localStorage.getItem('auth_token')
+  }
+}
+
+// Client service
+export const clients = {
+  getAll: async (): Promise<Client[]> => {
+    const response = await api.get('/clients')
+    return response.data
+  },
+
+  getById: async (id: string): Promise<Client> => {
+    const response = await api.get(`/clients/${id}`)
+    return response.data
+  },
+
+  create: async (client: Omit<Client, 'id'>): Promise<Client> => {
+    const response = await api.post('/clients', client)
+    return response.data
+  },
+
+  update: async (id: string, client: Partial<Client>): Promise<Client> => {
+    const response = await api.put(`/clients/${id}`, client)
+    return response.data
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await api.delete(`/clients/${id}`)
+  },
+  
+  getAssessments: async (id: string): Promise<Assessment[]> => {
+    const response = await api.get(`/clients/${id}/assessments`)
+    return response.data
+  },
+  
+  createFromAssessment: async (assessmentId: string): Promise<{success: boolean, client: Client, message: string}> => {
+    const response = await api.post(`/assessments/${assessmentId}/create-client`)
+    return response.data
   }
 }
 
@@ -254,6 +306,7 @@ export const initiatives = {
 
 const apiService = {
   auth,
+  clients,
   assessments,
   risks,
   objectives,

@@ -1,4 +1,93 @@
-import { assessmentsDb, risksDb, objectivesDb } from './config'
+import { assessmentsDb, risksDb, objectivesDb, clientsDb } from './config'
+
+// Client Services
+export const clientService = {
+  getAll: () => {
+    return clientsDb.query('SELECT * FROM clients ORDER BY name ASC').all();
+  },
+
+  getById: (id: string) => {
+    return clientsDb.query('SELECT * FROM clients WHERE id = ?').get(id);
+  },
+
+  create: (client: { id: string; name: string; description?: string; contact_name?: string; contact_email?: string; contact_phone?: string; industry?: string; size?: string; notes?: string; created_at: string; updated_at: string }) => {
+    const { id, name, description, contact_name, contact_email, contact_phone, industry, size, notes, created_at, updated_at } = client
+    clientsDb.run(
+      'INSERT INTO clients (id, name, description, contact_name, contact_email, contact_phone, industry, size, notes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, name, description || null, contact_name || null, contact_email || null, contact_phone || null, industry || null, size || null, notes || null, created_at, updated_at]
+    )
+    return client
+  },
+
+  update: (id: string, client: { name?: string; description?: string; contact_name?: string; contact_email?: string; contact_phone?: string; industry?: string; size?: string; notes?: string }) => {
+    const { name, description, contact_name, contact_email, contact_phone, industry, size, notes } = client
+    const updates: string[] = []
+    const values: any[] = []
+
+    if (name) {
+      updates.push('name = ?')
+      values.push(name)
+    }
+    if (description !== undefined) {
+      updates.push('description = ?')
+      values.push(description)
+    }
+    if (contact_name !== undefined) {
+      updates.push('contact_name = ?')
+      values.push(contact_name)
+    }
+    if (contact_email !== undefined) {
+      updates.push('contact_email = ?')
+      values.push(contact_email)
+    }
+    if (contact_phone !== undefined) {
+      updates.push('contact_phone = ?')
+      values.push(contact_phone)
+    }
+    if (industry !== undefined) {
+      updates.push('industry = ?')
+      values.push(industry)
+    }
+    if (size !== undefined) {
+      updates.push('size = ?')
+      values.push(size)
+    }
+    if (notes !== undefined) {
+      updates.push('notes = ?')
+      values.push(notes)
+    }
+
+    if (updates.length > 0) {
+      updates.push('updated_at = CURRENT_TIMESTAMP')
+      values.push(id)
+      clientsDb.run(
+        `UPDATE clients SET ${updates.join(', ')} WHERE id = ?`,
+        values
+      )
+    }
+
+    return clientService.getById(id)
+  },
+
+  delete: (id: string) => {
+    clientsDb.run('DELETE FROM clients WHERE id = ?', [id])
+  },
+  
+  getAssessments: (clientId: string) => {
+    const assessments = assessmentsDb.query('SELECT * FROM assessments WHERE client_id = ? ORDER BY created_at DESC').all(clientId);
+    // Parse the JSON data string for each assessment
+    return assessments.map((assessment: any) => {
+      if (assessment && assessment.data && typeof assessment.data === 'string') {
+        try {
+          assessment.data = JSON.parse(assessment.data);
+        } catch (e) {
+          console.error('Error parsing assessment data:', e);
+        }
+      }
+      return assessment;
+    });
+  }
+}
 
 // Assessment Services
 export const assessmentService = {
@@ -29,8 +118,8 @@ export const assessmentService = {
     return assessment;
   },
 
-  create: (assessment: { id: string; title: string; description?: string; data: any; created_at: string; updated_at: string }) => {
-    const { id, title, description, data, created_at, updated_at } = assessment
+  create: (assessment: { id: string; client_id?: string; title: string; description?: string; data: any; created_at: string; updated_at: string }) => {
+    const { id, client_id, title, description, data, created_at, updated_at } = assessment
     
     // Ensure data.controls exists before storing it
     if (data && (!data.controls || Object.keys(data.controls).length === 0)) {
@@ -43,8 +132,8 @@ export const assessmentService = {
     const dataJson = JSON.stringify(data);
     
     assessmentsDb.run(
-      'INSERT INTO assessments (id, title, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, title, description || null, dataJson, created_at, updated_at]
+      'INSERT INTO assessments (id, client_id, title, description, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [id, client_id || null, title, description || null, dataJson, created_at, updated_at]
     )
     
     // Confirm what was stored in the database
@@ -62,16 +151,20 @@ export const assessmentService = {
     return assessment
   },
 
-  update: (id: string, assessment: { title?: string; description?: string; data?: any }) => {
-    const { title, description, data } = assessment
+  update: (id: string, assessment: { client_id?: string; title?: string; description?: string; data?: any }) => {
+    const { client_id, title, description, data } = assessment
     const updates: string[] = []
     const values: any[] = []
 
+    if (client_id !== undefined) {
+      updates.push('client_id = ?')
+      values.push(client_id)
+    }
     if (title) {
       updates.push('title = ?')
       values.push(title)
     }
-    if (description) {
+    if (description !== undefined) {
       updates.push('description = ?')
       values.push(description)
     }

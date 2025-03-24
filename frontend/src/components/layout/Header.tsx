@@ -38,6 +38,15 @@ export default function Header() {
             Dashboard
           </Link>
           
+          <Link 
+            href="/clients" 
+            className={`text-sm font-medium transition-colors hover:text-primary ${
+              pathname.startsWith('/clients') ? 'text-primary' : 'text-muted-foreground'
+            }`}
+          >
+            Clients
+          </Link>
+          
           {currentAssessmentId && (
             <>
               <span className="text-muted-foreground">/</span>

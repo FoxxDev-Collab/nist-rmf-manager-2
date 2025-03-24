@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
-import { assessments, risks } from '@/services/api'
+import { assessments, risks, clients } from '@/services/api'
 import type { Assessment } from '@/services/api'
 import { 
   RiskScoreCard,
@@ -16,6 +16,7 @@ import {
   ControlsList,
   DebugInfo
 } from '@/components/shared/assessment'
+import { Building, FileText } from 'lucide-react'
 
 interface ControlStatus {
   status: string
@@ -57,6 +58,7 @@ export default function AssessmentDetail({ id }: { id: string }) {
   const [assessment, setAssessment] = useState<Assessment | null>(null)
   const [loading, setLoading] = useState(true)
   const [promotedControls, setPromotedControls] = useState<Set<string>>(new Set())
+  const [creatingClient, setCreatingClient] = useState(false)
 
   const loadAssessment = useCallback(async () => {
     try {
@@ -122,6 +124,27 @@ export default function AssessmentDetail({ id }: { id: string }) {
       }
     }
   }
+
+  const handleCreateClient = async () => {
+    if (!assessment) return;
+    
+    try {
+      setCreatingClient(true);
+      const result = await clients.createFromAssessment(assessment.id!);
+      
+      toast.success(`Client "${result.client.name}" created successfully`);
+      // Refresh the assessment to show the client connection
+      loadAssessment();
+      
+      // Optionally navigate to the client detail page
+      router.push(`/clients/${result.client.id}`);
+    } catch (error) {
+      console.error('Error creating client:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create client');
+    } finally {
+      setCreatingClient(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -300,45 +323,47 @@ export default function AssessmentDetail({ id }: { id: string }) {
   })();
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            onClick={() => router.push('/dashboard')}
-          >
-            Back
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">{assessment.title}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge variant="default">{processedData.status}</Badge>
-            </div>
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{assessment.title}</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline">{processedData.status}</Badge>
+            <p className="text-sm text-muted-foreground">
+              {processedData.date ? new Date(processedData.date).toLocaleDateString() : 'No date'}
+            </p>
           </div>
         </div>
-      </div>
-
-      {/* Assessment Cards Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Risk Score Card */}
-        <RiskScoreCard score={detailedScores.totalScore} />
-
-        {/* Controls Status Card */}
-        <ControlsStatusCard
-          implementedPercentage={detailedScores.implementedPercentage}
-          partialPercentage={detailedScores.partialPercentage}
-          notImplementedPercentage={detailedScores.notImplementedPercentage}
-          plannedPercentage={detailedScores.plannedPercentage}
-          totalControls={detailedScores.totalControls}
-        />
-
-        {/* Controls Status Graph */}
-        <ControlsStatusGraph
-          implementedPercentage={detailedScores.implementedPercentage}
-          partialPercentage={detailedScores.partialPercentage}
-          notImplementedPercentage={detailedScores.notImplementedPercentage}
-          plannedPercentage={detailedScores.plannedPercentage}
-        />
+        <div className="flex flex-wrap gap-2">
+          {assessment.client_id ? (
+            <Button 
+              variant="outline"
+              onClick={() => router.push(`/clients/${assessment.client_id}`)}
+              className="flex items-center gap-2"
+            >
+              <Building className="h-4 w-4" />
+              View Client
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleCreateClient}
+              disabled={creatingClient}
+              className="flex items-center gap-2"
+              size="lg"
+            >
+              <Building className="h-5 w-5" />
+              {creatingClient ? 'Creating...' : 'Create Client from Assessment'}
+            </Button>
+          )}
+          <Button 
+            variant="outline"
+            onClick={() => router.push(`/assessment/${id}/risk`)}
+            className="flex items-center gap-2"
+          >
+            <FileText className="h-4 w-4" />
+            View Risks
+          </Button>
+        </div>
       </div>
 
       {/* Assessment Overview */}
@@ -348,24 +373,50 @@ export default function AssessmentDetail({ id }: { id: string }) {
         date={processedData.date}
         status={processedData.status}
       />
-
+      
+      {/* Assessment Cards Row */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <RiskScoreCard score={processedData.score || 0} />
+        <ControlsStatusCard
+          implementedPercentage={detailedScores.implementedPercentage}
+          partialPercentage={detailedScores.partialPercentage}
+          notImplementedPercentage={detailedScores.notImplementedPercentage}
+          plannedPercentage={detailedScores.plannedPercentage}
+          totalControls={detailedScores.totalControls}
+        />
+        <ControlsStatusGraph
+          implementedPercentage={detailedScores.implementedPercentage}
+          partialPercentage={detailedScores.partialPercentage}
+          notImplementedPercentage={detailedScores.notImplementedPercentage}
+          plannedPercentage={detailedScores.plannedPercentage}
+        />
+      </div>
+      
       {/* Family Scores Accordion */}
-      <FamilyScoresAccordion familyScores={detailedScores.familyScores} />
-
+      <div className="mt-6">
+        <h2 className="text-xl font-semibold mb-3">Control Family Scores</h2>
+        <FamilyScoresAccordion familyScores={detailedScores.familyScores} />
+      </div>
+      
       {/* Controls List */}
-      <ControlsList
-        controls={processedData.controls}
-        onPromoteToRisk={handlePromoteToRisk}
-        promotedControls={promotedControls}
-      />
-
-      {/* Debug Info */}
-      <DebugInfo
-        id={assessment.id}
-        title={assessment.title}
-        description={assessment.description}
-        data={assessment as unknown as Record<string, unknown>}
-      />
+      <div className="mt-6">
+        <h2 className="text-xl font-semibold mb-3">Controls Assessment</h2>
+        <ControlsList 
+          controls={processedData.controls} 
+          onPromoteToRisk={handlePromoteToRisk}
+          promotedControls={promotedControls}
+        />
+      </div>
+      
+      {/* Debug information */}
+      {process.env.NODE_ENV === 'development' && (
+        <DebugInfo
+          id={assessment.id}
+          title={assessment.title}
+          description={assessment.description}
+          data={assessment as unknown as Record<string, unknown>}
+        />
+      )}
     </div>
   )
 } 

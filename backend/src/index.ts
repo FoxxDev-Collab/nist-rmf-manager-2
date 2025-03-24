@@ -3,7 +3,7 @@ import { cors } from '@elysiajs/cors'
 import { jwt } from '@elysiajs/jwt'
 import { swagger } from '@elysiajs/swagger'
 import { initializeDatabases } from './db/config'
-import { assessmentService, riskService, objectiveService, initiativeService } from './db/services'
+import { assessmentService, riskService, objectiveService, initiativeService, clientService } from './db/services'
 import { assessmentsDb } from './db/config'
 import dotenv from 'dotenv'
 
@@ -23,6 +23,7 @@ interface AssessmentData {
 
 interface Assessment {
   id?: string;
+  client_id?: string;
   title?: string;
   description?: string;
   client_name?: string;
@@ -102,6 +103,20 @@ interface Initiative {
   objective?: SecurityObjective;
 }
 
+interface Client {
+  id?: string;
+  name: string;
+  description?: string;
+  contact_name?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  industry?: string;
+  size?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const PASS_CODE = process.env.PASS_CODE || 'your-secure-pass-code'
 
 // Initialize databases
@@ -168,17 +183,17 @@ const app = new Elysia()
     const id = crypto.randomUUID()
     const now = new Date().toISOString()
     
-    // Extract controls data directly from the request body
-    // First try to get from standard locations
-    let controlsData = assessment.data?.controls;
+    // Either use directly provided controls, or look for them in nested structures
+    let controlsData = assessment.controls || {}
     
-    // If not found, try alternative locations
     if (!controlsData || Object.keys(controlsData).length === 0) {
-      controlsData = assessment.controls || 
-                    assessment.original_data?.controls;
-      
-      if (controlsData) {
-        console.log('Found controls data in alternative location:', Object.keys(controlsData).length);
+      // Try to find controls in the nested data structure
+      if (assessment.data?.controls) {
+        controlsData = assessment.data.controls;
+        console.log('Found controls in assessment.data.controls');
+      } else if (assessment.original_data?.controls) {
+        controlsData = assessment.original_data.controls;
+        console.log('Found controls in assessment.original_data.controls');
       }
     }
     
@@ -211,6 +226,7 @@ const app = new Elysia()
     // Convert assessment from API schema to database schema
     const assessmentData = {
       id,
+      client_id: assessment.client_id || undefined,
       title,
       description,
       data: {
@@ -521,6 +537,103 @@ const app = new Elysia()
     await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
     initiativeService.delete(params.id)
     return { success: true }
+  })
+  // Clients
+  .get('/api/clients', async ({ headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    return clientService.getAll()
+  })
+  .get('/api/clients/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const client = clientService.getById(params.id)
+    if (!client) throw new Error('Client not found')
+    return client
+  })
+  .post('/api/clients', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const client = body as Client
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    // Convert client to database schema
+    const clientData = {
+      id,
+      name: client.name,
+      description: client.description || '',
+      contact_name: client.contact_name || '',
+      contact_email: client.contact_email || '',
+      contact_phone: client.contact_phone || '',
+      industry: client.industry || '',
+      size: client.size || '',
+      notes: client.notes || '',
+      created_at: client.created_at || now,
+      updated_at: now
+    }
+    
+    return clientService.create(clientData)
+  })
+  .put('/api/clients/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const client = body as Client
+    
+    // Convert client to database schema
+    const clientData = {
+      name: client.name,
+      description: client.description || '',
+      contact_name: client.contact_name || '',
+      contact_email: client.contact_email || '',
+      contact_phone: client.contact_phone || '',
+      industry: client.industry || '',
+      size: client.size || '',
+      notes: client.notes || '',
+    }
+    
+    return clientService.update(params.id, clientData)
+  })
+  .delete('/api/clients/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    clientService.delete(params.id)
+    return { success: true }
+  })
+  .get('/api/clients/:id/assessments', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    return clientService.getAssessments(params.id)
+  })
+  // Create client from assessment endpoint
+  .post('/api/assessments/:id/create-client', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    
+    // Get the assessment
+    const assessment = assessmentService.getById(params.id)
+    if (!assessment) throw new Error('Assessment not found')
+    
+    // Extract client info from assessment
+    const assessmentData = (assessment as Assessment).data
+    if (!assessmentData?.organization) throw new Error('Assessment has no organization data')
+    
+    const clientId = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    // Create client
+    const clientData = {
+      id: clientId,
+      name: assessmentData.organization,
+      description: `Client created from assessment: ${(assessment as Assessment).title || 'Untitled'}`,
+      created_at: now,
+      updated_at: now
+    }
+    
+    // Create the client
+    clientService.create(clientData)
+    
+    // Update the assessment with the client_id
+    assessmentService.update(params.id, { client_id: clientId })
+    
+    return { 
+      success: true, 
+      client: clientService.getById(clientId),
+      message: `Client "${assessmentData.organization}" created and linked to assessment`
+    }
   })
   .listen(3001)
 

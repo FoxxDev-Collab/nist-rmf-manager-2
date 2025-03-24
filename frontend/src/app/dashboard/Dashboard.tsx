@@ -10,8 +10,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
-import { assessments } from '@/services/api'
+import { assessments, clients } from '@/services/api'
 import type { Assessment } from '@/services/api'
+import { PlusCircle, Upload, Trash, ArrowRight, Users } from 'lucide-react'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -158,34 +159,38 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold dark:text-white">Risk Management - Assessments</h1>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>Import Assessment</Button>
-          </DialogTrigger>
-          <DialogContent className="dark:bg-gray-900">
-            <DialogHeader>
-              <DialogTitle className="dark:text-white">Import Assessment</DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleFileImport} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="file-input" className="dark:text-gray-300">Select JSON File</Label>
-                <Input
-                  id="file-input"
-                  type="file"
-                  accept=".json"
-                  disabled={importing}
-                  className="dark:bg-gray-800 dark:text-white"
-                />
-              </div>
-              <Button type="submit" disabled={importing}>
-                {importing ? 'Importing...' : 'Import'}
-              </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+    <div className="container mx-auto py-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight dark:text-white">Security Assessment Manager</h1>
+          <p className="text-muted-foreground dark:text-gray-400 mt-1">
+            Manage security assessments, risks, and improvement objectives
+          </p>
+        </div>
+        <div className="flex space-x-3">
+          <Button onClick={() => router.push('/clients')}>
+            <Users className="h-4 w-4 mr-2" />
+            Clients
+          </Button>
+          <form onSubmit={handleFileImport}>
+            <input
+              type="file"
+              id="file-input"
+              className="hidden"
+              accept=".json"
+              onChange={() => document.getElementById('submit-button')?.click()}
+            />
+            <Button
+              type="button"
+              onClick={() => document.getElementById('file-input')?.click()}
+              disabled={importing}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              {importing ? 'Importing...' : 'Import Assessment'}
+            </Button>
+            <button id="submit-button" type="submit" className="hidden" />
+          </form>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -221,7 +226,7 @@ export default function Dashboard() {
         </Card>
       </div>
    
-      <Card className="dark:bg-gray-800 dark:border-gray-700">
+      <Card className="mt-6 dark:bg-gray-800 dark:border-gray-700">
         <CardHeader>
           <CardTitle className="dark:text-white">Assessments</CardTitle>
         </CardHeader>
@@ -247,6 +252,23 @@ export default function Dashboard() {
                             {assessment.description}
                           </p>
                         )}
+                        <div className="flex items-center mt-1 space-x-2">
+                          <span className="text-xs text-muted-foreground dark:text-gray-400">
+                            Organization: {assessment.data.organization}
+                          </span>
+                          {assessment.client_id && (
+                            <Button 
+                              variant="link" 
+                              className="text-xs p-0 h-auto" 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push(`/clients/${assessment.client_id}`);
+                              }}
+                            >
+                              View Client <ArrowRight className="h-3 w-3 ml-1" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                       <div className="space-x-2">
                         <Button
