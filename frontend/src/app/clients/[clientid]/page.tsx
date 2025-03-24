@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { clients, assessments as assessmentsApi } from '@/services/api'
 import { Client, Assessment } from '@/services/api'
@@ -27,11 +27,7 @@ export default function ClientDetailPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [assessmentToDelete, setAssessmentToDelete] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchClientData()
-  }, [clientId])
-
-  const fetchClientData = async () => {
+  const fetchClientData = useCallback(async () => {
     try {
       setLoading(true)
       const [clientData, assessmentsData] = await Promise.all([
@@ -47,7 +43,11 @@ export default function ClientDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [clientId])
+
+  useEffect(() => {
+    fetchClientData()
+  }, [fetchClientData])
 
   const handleEdit = () => {
     router.push(`/clients/${clientId}/edit`)
@@ -57,7 +57,7 @@ export default function ClientDetailPage() {
     router.push(`/assessment/create?clientId=${clientId}`)
   }
 
-  const handleFileImport = async (e: React.FormEvent) => {
+  const handleFileImport = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     const fileInput = document.getElementById('client-file-input') as HTMLInputElement
     if (!fileInput?.files?.[0]) {
@@ -132,27 +132,28 @@ export default function ClientDetailPage() {
         toast.success('Assessment imported successfully')
         await fetchClientData() // Refresh data
         fileInput.value = ''
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error('Import error details:', error)
         let errorMessage = 'Failed to import assessment'
         
-        if (error.response) {
-          errorMessage = `Server error (${error.response.status}): ${error.response.data?.message || 'Unknown error'}`
-          console.error('Response data:', error.response.data)
-        } else if (error.request) {
+        if (error && typeof error === 'object' && 'response' in error) {
+          const axiosError = error as { response?: { status: number; data?: { message?: string } } }
+          errorMessage = `Server error (${axiosError.response?.status}): ${axiosError.response?.data?.message || 'Unknown error'}`
+          console.error('Response data:', axiosError.response?.data)
+        } else if (error && typeof error === 'object' && 'request' in error) {
           errorMessage = 'No response from server. Please check if the backend is running.'
-        } else {
-          errorMessage = `Error: ${error.message || 'Unknown error'}`
+        } else if (error instanceof Error) {
+          errorMessage = `Error: ${error.message}`
         }
         
         toast.error(errorMessage)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       let errorMessage = 'Failed to process assessment file'
       
       if (error instanceof SyntaxError) {
         errorMessage = 'Invalid JSON file format'
-      } else if (error.message) {
+      } else if (error instanceof Error) {
         errorMessage = `Error: ${error.message}`
       }
       
@@ -163,10 +164,10 @@ export default function ClientDetailPage() {
     }
   }
 
-  const openDeleteDialog = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent clicking through to the assessment detail
-    setAssessmentToDelete(id);
-    setDeleteDialogOpen(true);
+  const openDeleteDialog = (id: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation()
+    setAssessmentToDelete(id)
+    setDeleteDialogOpen(true)
   }
 
   const confirmDelete = async () => {

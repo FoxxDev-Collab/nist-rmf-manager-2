@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import { v4 as uuidv4 } from 'uuid';
 import apiService, { Assessment, Risk } from '@/services/api';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Slider } from '@/components/ui/slider';
-import { AlertCircle, ArrowLeft, InfoIcon, CalendarIcon, Clock, CheckCircle2, AlertTriangle, ChevronRight } from 'lucide-react';
+import { AlertCircle, ArrowLeft, InfoIcon, CalendarIcon, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';

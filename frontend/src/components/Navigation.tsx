@@ -5,13 +5,11 @@ import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import {
   BarChart,
-  FilePlus,
   FileText,
   Home,
   AlertTriangle,
   Target,
   Building,
-  Settings,
   Menu,
   X
 } from 'lucide-react'

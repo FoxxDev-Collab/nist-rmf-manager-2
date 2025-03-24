@@ -6,11 +6,9 @@ import { assessments, clients } from '@/services/api'
 import type { Assessment } from '@/services/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
-import { FileText, FileUp, Building, BarChart, AlertTriangle, CheckCircle, Info } from 'lucide-react'
+import { FileText, FileUp, Building, AlertTriangle, CheckCircle, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import MainLayout from '@/components/layout/MainLayout'
-import Link from 'next/link'
 
 export default function HomePage() {
   const router = useRouter()
@@ -19,38 +17,32 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true)
-        const [assessmentsData, clientsData] = await Promise.all([
-          assessments.getAll(),
-          clients.getAll()
-        ])
-        setAssessmentsList(assessmentsData)
-        setClientsCount(clientsData.length)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-        toast.error('Failed to load data')
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchData()
   }, [])
 
-  // Calculate metrics
-  const getCompletedAssessments = () => {
-    return assessmentsList.filter(a => (a.data?.completion === 100 || a.data?.status === 'Completed')).length
+  const fetchData = async () => {
+    try {
+      setLoading(true)
+      const [assessmentsData, clientsData] = await Promise.all([
+        assessments.getAll(),
+        clients.getAll()
+      ])
+      setAssessmentsList(assessmentsData)
+      setClientsCount(clientsData.length)
+    } catch (err) {
+      console.error('Error fetching data:', err)
+      toast.error('Failed to load dashboard data')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getInProgressAssessments = () => {
-    return assessmentsList.filter(a => (a.data?.completion ?? 0) < 100 && a.data?.status !== 'Completed').length
+  const getCompletedAssessments = () => {
+    return assessmentsList.filter(assessment => assessment.data.status === 'Completed').length
   }
 
   const getHighRiskCount = () => {
-    // Count assessments with a score below 70% as high risk
-    return assessmentsList.filter(a => (a.data?.score ?? 0) < 70).length
+    return assessmentsList.filter(assessment => (assessment.data.score ?? 0) < 70).length
   }
 
   return (

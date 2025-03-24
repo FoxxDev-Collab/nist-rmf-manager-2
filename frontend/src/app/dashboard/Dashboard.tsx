@@ -6,13 +6,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { toast } from 'sonner'
-import { assessments, clients } from '@/services/api'
+import { assessments } from '@/services/api'
 import type { Assessment } from '@/services/api'
-import { PlusCircle, Upload, Trash, ArrowRight, Users } from 'lucide-react'
+import { Upload, Trash, ArrowRight, Users } from 'lucide-react'
 
 export default function Dashboard() {
   const router = useRouter()

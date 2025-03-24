@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, Database, Settings as SettingsIcon } from "lucide-react";
+import { AlertCircle, CheckCircle, Database } from "lucide-react";
 import apiService from "@/services/api";
 import MainLayout from "@/components/layout/MainLayout";
 

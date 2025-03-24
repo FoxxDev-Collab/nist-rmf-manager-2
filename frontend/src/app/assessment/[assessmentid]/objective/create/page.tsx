@@ -46,7 +46,6 @@ export default function CreateObjectivePage() {
   const searchParams = useSearchParams();
   const assessmentId = params.assessmentid as string;
   const [clientId, setClientId] = useState<string | null>(null);
-  const riskId = searchParams.get('riskId');
 
   const [sourceRisk, setSourceRisk] = useState<Risk | null>(null);
   const [loading, setLoading] = useState(true);
