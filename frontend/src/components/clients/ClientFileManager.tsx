@@ -15,7 +15,7 @@ interface ClientFile {
   category: string
 }
 
-export function ClientFileManager({ clientId }: { clientId: string }) {
+export function ClientFileManager({}: { clientId: string }) {
   const [files, setFiles] = useState<ClientFile[]>([])
   const [uploading, setUploading] = useState(false)
 
@@ -49,6 +49,7 @@ export function ClientFileManager({ clientId }: { clientId: string }) {
   const handleFileDownload = async (fileId: string) => {
     try {
       // TODO: Implement file download API call
+      console.log('Will download file:', fileId)
       toast.success('File download started')
     } catch (error) {
       toast.error('Failed to download file')

@@ -3,7 +3,17 @@ import { cors } from '@elysiajs/cors'
 import { jwt } from '@elysiajs/jwt'
 import { swagger } from '@elysiajs/swagger'
 import { initializeDatabases } from './db/config'
-import { assessmentService, riskService, objectiveService, initiativeService, clientService } from './db/services'
+import { 
+  assessmentService, 
+  riskService, 
+  objectiveService, 
+  initiativeService, 
+  clientService,
+  milestoneService,
+  taskService,
+  commentService,
+  attachmentService
+} from './db/services'
 import { assessmentsDb } from './db/config'
 import dotenv from 'dotenv'
 
@@ -95,13 +105,76 @@ interface Initiative {
   title: string;
   description: string;
   status: 'New' | 'In Progress' | 'Completed' | 'Cancelled' | 'On Hold';
+  priority?: 'High' | 'Medium' | 'Low';
+  assigned_to?: string;
   start_date?: string;
-  end_date?: string;
-  owner?: string;
-  progress: number;
+  due_date?: string;
+  completion_percentage?: number;
   created_at: string;
   updated_at: string;
   objective?: SecurityObjective;
+  milestones?: Milestone[];
+  data?: any;
+}
+
+interface Milestone {
+  id?: string;
+  initiative_id: string;
+  title: string;
+  description?: string;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Blocked' | 'Deferred';
+  priority: 'High' | 'Medium' | 'Low';
+  assigned_to?: string;
+  start_date?: string;
+  due_date?: string;
+  completion_percentage: number;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+  tasks?: Task[];
+  initiative?: Initiative;
+  data?: any;
+}
+
+interface Task {
+  id?: string;
+  milestone_id: string;
+  title: string;
+  description?: string;
+  status: 'Not Started' | 'In Progress' | 'Completed' | 'Blocked' | 'Deferred';
+  priority: 'High' | 'Medium' | 'Low';
+  assigned_to?: string;
+  start_date?: string;
+  due_date?: string;
+  estimated_hours?: number;
+  actual_hours?: number;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+  milestone?: Milestone;
+  data?: any;
+}
+
+interface Comment {
+  id?: string;
+  parent_type: 'objective' | 'initiative' | 'milestone' | 'task';
+  parent_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface Attachment {
+  id?: string;
+  parent_type: 'objective' | 'initiative' | 'milestone' | 'task';
+  parent_id: string;
+  file_name: string;
+  file_path: string;
+  file_size: number;
+  file_type: string;
+  uploaded_by: string;
+  created_at: string;
 }
 
 interface Client {
@@ -516,9 +589,9 @@ const app = new Elysia()
       data: {
         status: initiative.status || 'New',
         start_date: initiative.start_date || '',
-        end_date: initiative.end_date || '',
-        owner: initiative.owner || '',
-        progress: initiative.progress || 0
+        end_date: initiative.due_date || '',
+        owner: initiative.assigned_to || '',
+        progress: initiative.completion_percentage || 0
       },
       created_at: initiative.created_at || now,
       updated_at: now
@@ -687,6 +760,270 @@ const app = new Elysia()
       count: count
     };
   })
-  .listen(3001)
+  // Milestone Management
+  .get('/api/milestones', async ({ query, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { initiativeId } = query
+    
+    if (initiativeId) {
+      return milestoneService.getAll(initiativeId as string)
+    }
+    
+    return milestoneService.getAll()
+  })
+  
+  .get('/api/milestones/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const milestone = milestoneService.getById(params.id)
+    
+    if (!milestone) {
+      throw new Error('Milestone not found')
+    }
+    
+    return milestone
+  })
+  
+  .post('/api/milestones', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const milestoneData = body as Milestone
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    const milestone = {
+      id,
+      initiativeId: milestoneData.initiative_id,
+      title: milestoneData.title,
+      description: milestoneData.description || '',
+      status: milestoneData.status || 'Not Started',
+      priority: milestoneData.priority || 'Medium',
+      assigned_to: milestoneData.assigned_to || null,
+      start_date: milestoneData.start_date || null,
+      due_date: milestoneData.due_date || null,
+      completion_percentage: milestoneData.completion_percentage || 0,
+      order_index: milestoneData.order_index || 0,
+      data: milestoneData.data || {},
+      created_at: now,
+      updated_at: now
+    }
+    
+    return milestoneService.create(milestone)
+  })
+  
+  .put('/api/milestones/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const milestoneData = body as Partial<Milestone>
+    
+    // Create an update object with only the fields that were provided
+    const update: Record<string, any> = {}
+    
+    if (milestoneData.title !== undefined) update.title = milestoneData.title
+    if (milestoneData.description !== undefined) update.description = milestoneData.description
+    if (milestoneData.status !== undefined) update.status = milestoneData.status
+    if (milestoneData.priority !== undefined) update.priority = milestoneData.priority
+    if (milestoneData.assigned_to !== undefined) update.assigned_to = milestoneData.assigned_to
+    if (milestoneData.start_date !== undefined) update.start_date = milestoneData.start_date
+    if (milestoneData.due_date !== undefined) update.due_date = milestoneData.due_date
+    if (milestoneData.completion_percentage !== undefined) update.completion_percentage = milestoneData.completion_percentage
+    if (milestoneData.order_index !== undefined) update.order_index = milestoneData.order_index
+    if (milestoneData.data !== undefined) update.data = milestoneData.data
+    
+    return milestoneService.update(params.id, update)
+  })
+  
+  .delete('/api/milestones/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    milestoneService.delete(params.id)
+    return { success: true }
+  })
+  
+  .post('/api/milestones/reorder', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { milestoneIds } = body as { milestoneIds: string[] }
+    
+    if (!Array.isArray(milestoneIds)) {
+      throw new Error('Invalid milestone IDs provided')
+    }
+    
+    const success = milestoneService.updateOrder(milestoneIds)
+    return { success }
+  })
+  
+  // Task Management
+  .get('/api/tasks', async ({ query, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { milestoneId } = query
+    
+    if (milestoneId) {
+      return taskService.getAll(milestoneId as string)
+    }
+    
+    return taskService.getAll()
+  })
+  
+  .get('/api/tasks/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const task = taskService.getById(params.id)
+    
+    if (!task) {
+      throw new Error('Task not found')
+    }
+    
+    return task
+  })
+  
+  .post('/api/tasks', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const taskData = body as Task
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    const task = {
+      id,
+      milestoneId: taskData.milestone_id,
+      title: taskData.title,
+      description: taskData.description || '',
+      status: taskData.status || 'Not Started',
+      priority: taskData.priority || 'Medium',
+      assigned_to: taskData.assigned_to || null,
+      start_date: taskData.start_date || null,
+      due_date: taskData.due_date || null,
+      estimated_hours: taskData.estimated_hours || null,
+      actual_hours: taskData.actual_hours || null,
+      order_index: taskData.order_index || 0,
+      data: taskData.data || {},
+      created_at: now,
+      updated_at: now
+    }
+    
+    return taskService.create(task)
+  })
+  
+  .put('/api/tasks/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const taskData = body as Partial<Task>
+    
+    // Create an update object with only the fields that were provided
+    const update: Record<string, any> = {}
+    
+    if (taskData.title !== undefined) update.title = taskData.title
+    if (taskData.description !== undefined) update.description = taskData.description
+    if (taskData.status !== undefined) update.status = taskData.status
+    if (taskData.priority !== undefined) update.priority = taskData.priority
+    if (taskData.assigned_to !== undefined) update.assigned_to = taskData.assigned_to
+    if (taskData.start_date !== undefined) update.start_date = taskData.start_date
+    if (taskData.due_date !== undefined) update.due_date = taskData.due_date
+    if (taskData.estimated_hours !== undefined) update.estimated_hours = taskData.estimated_hours
+    if (taskData.actual_hours !== undefined) update.actual_hours = taskData.actual_hours
+    if (taskData.order_index !== undefined) update.order_index = taskData.order_index
+    if (taskData.data !== undefined) update.data = taskData.data
+    
+    return taskService.update(params.id, update)
+  })
+  
+  .delete('/api/tasks/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    taskService.delete(params.id)
+    return { success: true }
+  })
+  
+  .post('/api/tasks/reorder', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { taskIds } = body as { taskIds: string[] }
+    
+    if (!Array.isArray(taskIds)) {
+      throw new Error('Invalid task IDs provided')
+    }
+    
+    const success = taskService.updateOrder(taskIds)
+    return { success }
+  })
+  
+  // Comments Management
+  .get('/api/comments', async ({ query, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { parentType, parentId } = query
+    
+    if (!parentType || !parentId) {
+      throw new Error('Parent type and ID are required')
+    }
+    
+    return commentService.getAll(parentType as string, parentId as string)
+  })
+  
+  .post('/api/comments', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const commentData = body as Comment
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    const comment = {
+      id,
+      parentType: commentData.parent_type,
+      parentId: commentData.parent_id,
+      userId: commentData.user_id,
+      content: commentData.content,
+      created_at: now,
+      updated_at: now
+    }
+    
+    return commentService.create(comment)
+  })
+  
+  .put('/api/comments/:id', async ({ params, body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { content } = body as { content: string }
+    
+    return commentService.update(params.id, content)
+  })
+  
+  .delete('/api/comments/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    commentService.delete(params.id)
+    return { success: true }
+  })
+  
+  // Attachments Management
+  .get('/api/attachments', async ({ query, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const { parentType, parentId } = query
+    
+    if (!parentType || !parentId) {
+      throw new Error('Parent type and ID are required')
+    }
+    
+    return attachmentService.getAll(parentType as string, parentId as string)
+  })
+  
+  .post('/api/attachments', async ({ body, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    const attachmentData = body as Attachment
+    const id = crypto.randomUUID()
+    const now = new Date().toISOString()
+    
+    const attachment = {
+      id,
+      parentType: attachmentData.parent_type,
+      parentId: attachmentData.parent_id,
+      fileName: attachmentData.file_name,
+      filePath: attachmentData.file_path,
+      fileSize: attachmentData.file_size,
+      fileType: attachmentData.file_type,
+      uploadedBy: attachmentData.uploaded_by,
+      created_at: now
+    }
+    
+    return attachmentService.create(attachment)
+  })
+  
+  .delete('/api/attachments/:id', async ({ params, headers, auth }) => {
+    await auth.verifyToken(headers.authorization?.split(' ')[1] || '')
+    attachmentService.delete(params.id)
+    return { success: true }
+  })
 
-console.log(`🦊 Server is running at ${app.server?.hostname}:${app.server?.port}`)
+// Start the server
+app.listen(3001)
+
+console.log(
+  `🦊 Foxx NIST RMF Manager backend is running at ${app.server?.hostname}:${app.server?.port}`
+)

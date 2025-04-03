@@ -1,0 +1,6 @@
+projectKey=RMF-Manager
+serverUrl=http://localhost:29000
+serverVersion=25.3.0.104237
+dashboardUrl=http://localhost:29000/dashboard?id=RMF-Manager
+ceTaskId=65b265a0-e96c-4a7f-9724-5c7722497731
+ceTaskUrl=http://localhost:29000/api/ce/task?id=65b265a0-e96c-4a7f-9724-5c7722497731

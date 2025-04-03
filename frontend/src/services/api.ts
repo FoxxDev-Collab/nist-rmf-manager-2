@@ -1,6 +1,7 @@
 "use client";
 
 import axios, { InternalAxiosRequestConfig } from 'axios'
+import { MilestoneData } from '@/components/shared/MilestoneList';
 
 const API_BASE_URL = 'http://localhost:3001/api'
 
@@ -66,12 +67,7 @@ export interface SecurityObjectiveData {
     spent: number
     currency: string
   }
-  milestones?: Array<{
-    id: string
-    title: string
-    dueDate: string
-    completed: boolean
-  }>
+  milestones?: MilestoneData[];
   assignees?: string[]
   risk_id?: string
 }

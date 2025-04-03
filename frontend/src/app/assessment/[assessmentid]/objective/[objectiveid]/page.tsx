@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import apiService, { SecurityObjective, SecurityObjectiveData } from '@/services/api';
+import apiService, { SecurityObjective, SecurityObjectiveData as ApiSecurityObjectiveData } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { 
   ArrowLeft, 
-  Calendar as CalendarIcon, 
+  CalendarIcon, 
   ClipboardList, 
   DollarSign, 
   BarChart4, 
@@ -27,17 +27,27 @@ import {
   AlertCircle,
   Edit,
   Save,
-  Plus,
-  Trash2,
-  CheckSquare,
-  Square
 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { MilestoneList } from '@/components/shared/MilestoneList';
+import { MilestoneData } from '@/components/shared/MilestoneList';
 
-// Enhanced objective data model with project management fields
-interface EnhancedSecurityObjectiveData extends SecurityObjectiveData {
+// Define type for the OLD milestone structure for compatibility
+interface OldMilestoneFormat {
+  id: string;
+  title: string;
+  dueDate?: string; // Optional to match potential old data
+  completed?: boolean; // Optional to match potential old data
+}
+
+// Rename local interface to avoid conflict
+interface LocalSecurityObjectiveData {
+  description: string;
+  status: string;
+  priority: number;
+  progress?: number;
   risk_notes?: string;
   startDate?: string;
   targetCompletionDate?: string;
@@ -47,15 +57,9 @@ interface EnhancedSecurityObjectiveData extends SecurityObjectiveData {
     spent: number;
     currency: string;
   };
-  milestones?: Array<{
-    id: string;
-    title: string;
-    dueDate: string;
-    completed: boolean;
-  }>;
+  milestones?: MilestoneData[];
   assignees?: string[];
   risk_id?: string;
-  progress?: number;
 }
 
 export default function ObjectiveDetailsPage() {
@@ -69,34 +73,20 @@ export default function ObjectiveDetailsPage() {
   const [error, setError] = useState<string | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [milestones, setMilestones] = useState<Array<{
-    id: string;
-    title: string;
-    dueDate: string;
-    completed: boolean;
-  }>>([]);
+  const [milestones, setMilestones] = useState<MilestoneData[]>([]);
   
   // Form state for edit mode
-  const [formData, setFormData] = useState<{
-    title: string;
-    description: string;
-    status: string;
-    priority: string;
-    progress: number;
-    startDate?: string;
-    targetCompletionDate?: string;
-    actualCompletionDate?: string;
-    budget?: {
-      allocated: number;
-      spent: number;
-      currency: string;
-    };
-  }>({
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    status: 'Planning',
-    priority: '3',
-    progress: 0
+    status: 'Not Started',
+    priority: '1',
+    progress: 0,
+    risk_notes: '',
+    startDate: '',
+    targetCompletionDate: '',
+    actualCompletionDate: '',
+    budget: { allocated: 0, spent: 0, currency: 'USD' }
   });
   
   // Fetch objective details
@@ -109,20 +99,45 @@ export default function ObjectiveDetailsPage() {
         
         const objectiveData = getObjectiveData(data.data);
         
-        // Initialize milestones state
-        setMilestones(objectiveData.milestones || []);
+        // Convert existing milestones data to the new format if needed
+        if (objectiveData.milestones && Array.isArray(objectiveData.milestones)) {
+          // Map old milestone format to new format if needed
+          // Use a union type for the milestone parameter
+          const formattedMilestones = objectiveData.milestones.map((milestone: OldMilestoneFormat | MilestoneData) => {
+            if ('status' in milestone) {
+              // Already in new format (MilestoneData)
+              return milestone as MilestoneData;
+            } else {
+              // Convert from old format
+              return {
+                id: milestone.id,
+                title: milestone.title,
+                description: '',
+                status: milestone.completed ? 'Completed' as const : 'Not Started' as const,
+                due_date: milestone.dueDate || null,
+                start_date: null,
+                completion_percentage: milestone.completed ? 100 : 0,
+                priority: 1,
+                assigned_to: null,
+                tasks: []
+              };
+            }
+          });
+          setMilestones(formattedMilestones);
+        }
         
         // Initialize form data
         setFormData({
           title: data.title || '',
           description: data.description || '',
-          status: objectiveData.status || 'Planning',
-          priority: String(objectiveData.priority || 3),
+          status: objectiveData.status || 'Not Started',
+          priority: String(objectiveData.priority || 1),
           progress: objectiveData.progress || 0,
-          startDate: objectiveData.startDate,
-          targetCompletionDate: objectiveData.targetCompletionDate,
-          actualCompletionDate: objectiveData.actualCompletionDate,
-          budget: objectiveData.budget
+          risk_notes: objectiveData.risk_notes || '',
+          startDate: objectiveData.startDate || '',
+          targetCompletionDate: objectiveData.targetCompletionDate || '',
+          actualCompletionDate: objectiveData.actualCompletionDate || '',
+          budget: objectiveData.budget || { allocated: 0, spent: 0, currency: 'USD' }
         });
       } catch (err) {
         console.error('Error fetching objective details:', err);
@@ -135,24 +150,21 @@ export default function ObjectiveDetailsPage() {
     fetchObjectiveDetails();
   }, [objectiveId]);
   
-  // Helper function to parse data if it's a string
-  const getObjectiveData = (data: unknown): EnhancedSecurityObjectiveData => {
-    if (typeof data === 'string') {
-      try {
-        return JSON.parse(data) as EnhancedSecurityObjectiveData;
-      } catch (e) {
-        console.error('Error parsing objective data:', e);
-        return { 
-          description: '', 
-          status: 'New', 
-          priority: 3 
-        };
-      }
-    }
-    return (data as EnhancedSecurityObjectiveData) || { 
-      description: '', 
-      status: 'New', 
-      priority: 3 
+  // Get full objective data
+  const getObjectiveData = (data: ApiSecurityObjectiveData): LocalSecurityObjectiveData => {
+    return {
+      description: data.description || '',
+      status: data.status || 'Not Started',
+      priority: data.priority || 1,
+      progress: data.progress !== undefined ? data.progress : 0,
+      risk_notes: data.risk_notes || '',
+      startDate: data.startDate || '',
+      targetCompletionDate: data.targetCompletionDate || '',
+      actualCompletionDate: data.actualCompletionDate || '',
+      budget: data.budget || { allocated: 0, spent: 0, currency: 'USD' },
+      milestones: data.milestones || [],
+      assignees: data.assignees || [],
+      risk_id: data.risk_id
     };
   };
   
@@ -199,31 +211,24 @@ export default function ObjectiveDetailsPage() {
     });
   };
   
-  const handleAddMilestone = () => {
-    // Generate a random ID safely (works in both newer and older browsers)
-    const newId = typeof crypto !== 'undefined' && crypto.randomUUID 
-      ? crypto.randomUUID() 
-      : Math.random().toString(36).substring(2);
-      
-    const newMilestone = {
-      id: newId,
-      title: '',
-      dueDate: '',
-      completed: false
-    };
-    setMilestones([...milestones, newMilestone]);
-  };
-
-  const handleRemoveMilestone = (id: string) => {
-    setMilestones(milestones.filter(milestone => milestone.id !== id));
-  };
-
-  const handleUpdateMilestone = (id: string, field: string, value: string | boolean) => {
-    setMilestones(milestones.map(milestone => 
-      milestone.id === id ? { ...milestone, [field]: value } : milestone
-    ));
+  // Calculate progress from milestones
+  const calculateProgressFromMilestones = (milestonesList: MilestoneData[] = []) => {
+    if (!milestonesList.length) return 0;
+    
+    const totalMilestones = milestonesList.length;
+    const completedMilestones = milestonesList.filter(m => m.status === 'Completed').length;
+    const inProgressMilestones = milestonesList.filter(m => m.status === 'In Progress').length;
+    
+    const completedPercentage = (completedMilestones / totalMilestones) * 100;
+    const inProgressContribution = (inProgressMilestones / totalMilestones) * 
+      (milestonesList.filter(m => m.status === 'In Progress')
+        .reduce((acc, curr) => acc + (curr.completion_percentage || 0), 0) / 
+        (inProgressMilestones || 1)) * 0.5;
+    
+    return Math.round(completedPercentage + inProgressContribution);
   };
   
+  // Handle saving the objective with updated milestones
   const handleSave = async () => {
     if (!objective) return;
     
@@ -233,11 +238,15 @@ export default function ObjectiveDetailsPage() {
     try {
       // Prepare updated objective data
       const objectiveData = getObjectiveData(objective.data);
-      const updatedData: EnhancedSecurityObjectiveData = {
+      
+      // Calculate progress from milestones
+      const calculatedProgress = calculateProgressFromMilestones(milestones);
+      
+      const updatedData: LocalSecurityObjectiveData = {
         description: formData.description || '',
         status: formData.status,
         priority: parseInt(formData.priority),
-        progress: formData.progress,
+        progress: calculatedProgress, // Use calculated progress instead of form data
         // Preserve and update fields
         risk_notes: objectiveData.risk_notes,
         startDate: formData.startDate,
@@ -252,9 +261,9 @@ export default function ObjectiveDetailsPage() {
       // Update the objective using the update method
       const updated = await apiService.objectives.update(objectiveId, {
         client_id: objective.client_id,
-        title: formData.title,
-        description: formData.description || '',
-        data: updatedData
+        title: objective.title,
+        description: updatedData.description,
+        data: updatedData as ApiSecurityObjectiveData
       });
       
       setObjective(updated);
@@ -273,9 +282,14 @@ export default function ObjectiveDetailsPage() {
       setFormData({
         title: objective.title || '',
         description: objective.description || '',
-        status: getObjectiveData(objective.data).status || 'Planning',
-        priority: String(getObjectiveData(objective.data).priority || 3),
-        progress: getObjectiveData(objective.data).progress || 0
+        status: getObjectiveData(objective.data).status || 'Not Started',
+        priority: String(getObjectiveData(objective.data).priority || 1),
+        progress: getObjectiveData(objective.data).progress || 0,
+        risk_notes: getObjectiveData(objective.data).risk_notes || '',
+        startDate: getObjectiveData(objective.data).startDate || '',
+        targetCompletionDate: getObjectiveData(objective.data).targetCompletionDate || '',
+        actualCompletionDate: getObjectiveData(objective.data).actualCompletionDate || '',
+        budget: getObjectiveData(objective.data).budget || { allocated: 0, spent: 0, currency: 'USD' }
       });
     }
     setEditMode(false);
@@ -332,8 +346,8 @@ export default function ObjectiveDetailsPage() {
   }
   
   const objectiveData = getObjectiveData(objective.data);
-  const { level, color } = getPriorityInfo(objectiveData.priority || 3);
-  const statusInfo = getStatusInfo(objectiveData.status || 'New');
+  const { level, color } = getPriorityInfo(objectiveData.priority || 1);
+  const statusInfo = getStatusInfo(objectiveData.status || 'Not Started');
   
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -714,143 +728,20 @@ export default function ObjectiveDetailsPage() {
           )}
         </TabsContent>
         
-        <TabsContent value="milestones" className="space-y-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle>Project Milestones</CardTitle>
-              {editMode && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-8"
-                  onClick={handleAddMilestone}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Milestone
-                </Button>
-              )}
-            </CardHeader>
-            <CardContent>
-              {!milestones.length ? (
-                <div className="text-center py-6 border-2 border-dashed rounded-lg">
-                  <p className="text-muted-foreground">No milestones defined yet</p>
-                  {editMode && (
-                    <Button 
-                      variant="link" 
-                      size="sm" 
-                      className="mt-2"
-                      onClick={handleAddMilestone}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      Add First Milestone
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {milestones.map((milestone) => (
-                    <div 
-                      key={milestone.id} 
-                      className="p-4 border rounded-md flex items-start justify-between dark:border-border"
-                    >
-                      {editMode ? (
-                        <div className="flex-1 space-y-3">
-                          <Input
-                            placeholder="Milestone title"
-                            value={milestone.title}
-                            onChange={(e) => handleUpdateMilestone(milestone.id, 'title', e.target.value)}
-                            className="w-full"
-                          />
-                          <div className="flex gap-3 items-center">
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className={cn(
-                                    "justify-start text-left font-normal",
-                                    !milestone.dueDate && "text-muted-foreground"
-                                  )}
-                                >
-                                  <CalendarIcon className="mr-2 h-4 w-4" />
-                                  {milestone.dueDate ? (
-                                    format(new Date(milestone.dueDate), 'PPP')
-                                  ) : (
-                                    <span>Select due date</span>
-                                  )}
-                                </Button>
-                              </PopoverTrigger>
-                              <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                  mode="single"
-                                  selected={milestone.dueDate ? new Date(milestone.dueDate) : undefined}
-                                  onSelect={(date) => 
-                                    handleUpdateMilestone(
-                                      milestone.id, 
-                                      'dueDate', 
-                                      date ? date.toISOString() : ''
-                                    )
-                                  }
-                                  initialFocus
-                                />
-                              </PopoverContent>
-                            </Popover>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => handleUpdateMilestone(milestone.id, 'completed', !milestone.completed)}
-                            >
-                              {milestone.completed ? (
-                                <>
-                                  <CheckSquare className="h-4 w-4" />
-                                  <span>Completed</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Square className="h-4 w-4" />
-                                  <span>Mark as completed</span>
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-1 flex-1">
-                          <h3 className="font-medium">{milestone.title}</h3>
-                          {milestone.dueDate && (
-                            <p className="text-sm text-muted-foreground flex items-center">
-                              <CalendarIcon className="h-3.5 w-3.5 mr-1" />
-                              Due: {format(new Date(milestone.dueDate), 'PPP')}
-                            </p>
-                          )}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        {!editMode ? (
-                          <Badge 
-                            variant={milestone.completed ? "default" : "outline"}
-                            className={milestone.completed ? "bg-green-500" : ""}
-                          >
-                            {milestone.completed ? "Completed" : "Pending"}
-                          </Badge>
-                        ) : (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleRemoveMilestone(milestone.id)}
-                            className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950 dark:hover:text-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="milestones" className="space-y-5">
+          <MilestoneList 
+            milestones={milestones} 
+            onMilestonesChange={(updatedMilestones) => {
+              setMilestones(updatedMilestones);
+              // Also update the progress based on milestone completion
+              const progress = calculateProgressFromMilestones(updatedMilestones);
+              setFormData({
+                ...formData,
+                progress
+              });
+            }}
+            readOnly={!editMode}
+          />
         </TabsContent>
       </Tabs>
     </div>
